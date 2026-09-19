@@ -2981,6 +2981,26 @@ function bind() {
         syncMuteButton();
         if (!Sfx.isMuted()) Sfx.click();
     });
+    const splash = get("studioSplash");
+    if (splash) {
+        let studioDone = false;
+        function dismissStudio() {
+            if (studioDone) return;
+            studioDone = true;
+            Sfx.unlock();
+            Sfx.logo();
+            Sfx.themeStart();
+            splash.classList.add("gone");
+            setTimeout(function () {
+                splash.hidden = true;
+            }, 900);
+        }
+        splash.addEventListener("pointerup", dismissStudio);
+        splash.addEventListener("keydown", function (event) {
+            if (event.key === "Enter" || event.key === " ") dismissStudio();
+        });
+        splash.tabIndex = 0;
+    }
     document.querySelectorAll("[data-train]").forEach((button) => {
         button.addEventListener("click", function () {
             train(button.getAttribute("data-train"));

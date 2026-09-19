@@ -3,7 +3,11 @@
 const Sfx = (() => {
     let ctx = null;
     let master = null;
+    let musicGain = null;
     let muted = localStorage.getItem("fc-muted") === "1";
+    let musicWanted = false;
+    let themeOn = false;
+    let themeGen = 0;
 
     function ensure() {
         const AC = window.AudioContext || window.webkitAudioContext;
@@ -13,6 +17,9 @@ const Sfx = (() => {
             master = ctx.createGain();
             master.gain.value = muted ? 0 : 0.55;
             master.connect(ctx.destination);
+            musicGain = ctx.createGain();
+            musicGain.gain.value = 0.2;
+            musicGain.connect(master);
         }
         if (ctx.state === "suspended") ctx.resume();
         return ctx;
@@ -22,6 +29,8 @@ const Sfx = (() => {
         muted = value;
         localStorage.setItem("fc-muted", muted ? "1" : "0");
         if (master) master.gain.value = muted ? 0 : 0.55;
+        if (muted) themeOn = false;
+        else if (musicWanted) themeStart();
     }
 
     function isMuted() {
@@ -204,9 +213,72 @@ const Sfx = (() => {
         ensure();
     }
 
+    function tone(type, freq, start, dur, peak, dest, slide) {
+        const o = ctx.createOscillator();
+        o.type = type;
+        o.frequency.setValueAtTime(freq, start);
+        if (slide) o.frequency.exponentialRampToValueAtTime(slide, start + dur);
+        const g = envGain(start, peak, 0.02, dur);
+        o.connect(g).connect(dest || master);
+        o.start(start);
+        o.stop(start + dur + 0.03);
+    }
+
+    function logo() {
+        if (!ensure() || muted) return;
+        const t = ctx.currentTime;
+        tone("sawtooth", 196, t, 0.28, 0.16, musicGain);
+        tone("triangle", 247, t + 0.12, 0.32, 0.14, musicGain);
+        tone("sawtooth", 330, t + 0.26, 0.55, 0.18, musicGain);
+        tone("triangle", 392, t + 0.26, 0.7, 0.1, musicGain);
+        tone("sine", 523, t + 0.42, 0.8, 0.08, musicGain);
+    }
+
+    function playThemeLoop(when) {
+        if (!themeOn || !ctx || muted) return;
+        const beat = 0.46;
+        const dest = musicGain;
+        const melody = [
+            [0, 392], [1, 466], [2, 523], [3, 622],
+            [4, 587], [5, 523], [6, 466], [7, 392],
+            [8, 415], [9, 466], [10, 523], [11, 392],
+            [12, 349], [13, 392], [14, 523], [15, 784]
+        ];
+        melody.forEach(function (n) {
+            tone("triangle", n[1], when + n[0] * beat, beat * 0.92, 0.07, dest);
+            if (n[0] % 4 === 0) tone("sawtooth", n[1] / 2, when + n[0] * beat, beat * 1.6, 0.035, dest);
+        });
+        for (let i = 0; i < 16; i++) {
+            const bass = i % 8 < 4 ? 65.41 : (i % 4 < 2 ? 49 : 51.91);
+            tone("sine", bass, when + i * beat, beat * 0.7, 0.09, dest);
+            if (i % 2 === 0) tone("sine", 90, when + i * beat, 0.08, 0.06, dest, 42);
+        }
+        const loopLen = 16 * beat;
+        const gen = themeGen;
+        const delay = Math.max(40, (when + loopLen - ctx.currentTime) * 1000 - 30);
+        setTimeout(function () {
+            if (themeOn && gen === themeGen) playThemeLoop(when + loopLen);
+        }, delay);
+    }
+
+    function themeStart() {
+        musicWanted = true;
+        if (!ensure() || muted || themeOn) return;
+        themeOn = true;
+        themeGen += 1;
+        playThemeLoop(ctx.currentTime + 0.08);
+    }
+
+    function themeStop() {
+        musicWanted = false;
+        themeOn = false;
+        themeGen += 1;
+    }
+
     return {
         click, start, train, rest, whistle, goal, miss,
         transferBig, matchKickoff, champ, ding, suspense, error,
+        logo, themeStart, themeStop,
         unlock, setMuted, isMuted
     };
 })();
