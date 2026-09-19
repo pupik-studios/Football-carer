@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#061018">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Football Career</title>
+    <style>
+      html,body{margin:0;background:#061018;color:#f4f7f2;font-family:system-ui,sans-serif}
+      #createScreen,#careerScreen{display:none}
+    </style>
+    <link rel="stylesheet" href="style.css?v=9">
+</head>
+<body>
+
+<button type="button" id="muteBtn" class="mute-btn" aria-label="Звук">🔊</button>
+
+<div id="fxOverlay" class="fx-overlay" hidden>
+    <div class="fx-card" id="fxCard">
+        <div class="fx-kicker" id="fxKicker"></div>
+        <h2 class="fx-title" id="fxTitle"></h2>
+        <p class="fx-sub" id="fxSub"></p>
+    </div>
+</div>
+
+<div id="battleOverlay" class="battle-overlay" hidden>
+    <div class="battle-card">
+        <p class="battle-kicker" id="battleKicker">ОНЛАЙН АРЕНА</p>
+        <h2 id="battleTitle">Поиск соперника</h2>
+        <p id="battleSub">сканируем лобби…</p>
+        <div class="battle-vs" id="battleVs" hidden>
+            <div class="battle-side" id="battleYou"></div>
+            <b>VS</b>
+            <div class="battle-side" id="battleThem"></div>
+        </div>
+        <div class="battle-code" id="battleCodeBox">
+            <p class="hint">Твой код — друг играет против твоей карточки</p>
+            <div class="battle-code-row">
+                <input id="myBattleCode" type="text" readonly tabindex="-1">
+                <button type="button" id="copyBattleCode" aria-label="Копировать">📋</button>
+            </div>
+            <input id="friendBattleCode" type="text" placeholder="Код друга" maxlength="160" autocomplete="off">
+            <button type="button" id="joinBattleBtn">🎮 ИГРАТЬ ПО КОДУ</button>
+        </div>
+        <button type="button" id="battleGo" class="gold" hidden>⚽ В БОЙ</button>
+        <button type="button" id="battleCancel" class="back-btn">ОТМЕНА</button>
+    </div>
+</div>
+
+<div id="modeScreen" class="splash">
+    <p class="brand-kicker">⚽ FOOTBALL CAREER</p>
+    <h1>Стань легендой</h1>
+    <p class="mode-lead">Тренируйся. Играй матчи. Переходи в топ.</p>
+    <button type="button" id="continueBtn" class="mode-btn continue" hidden>
+        ▶ ПРОДОЛЖИТЬ
+        <small id="continueMeta">Сохранённая карьера</small>
+    </button>
+    <div class="mode-grid">
+        <button type="button" id="modePlayer" class="mode-btn">
+            👤 ИГРОК
+            <small>Карьера футболиста: тренировки, матчи, трансферы</small>
+        </button>
+        <button type="button" id="modeClub" class="mode-btn club">
+            🏟️ КЛУБ
+            <small>Управляй командой: лиги, состав, бюджет</small>
+        </button>
+        <button type="button" id="modeBattle" class="mode-btn battle">
+            🌐 ОНЛАЙН БАТЛ
+            <small>Поиск соперника или бой по коду друга. Нужна карьера</small>
+        </button>
+        <button type="button" id="modeAuction" class="mode-btn auction">
+            🏆 АУКЦИОН ЧМ
+            <small>11 слотов 4-3-3 · ЧМ 1994–2026 · 1 перекрутка. Не связано с FC3</small>
+        </button>
+    </div>
+    <div class="card code-card">
+        <h2>Код</h2>
+        <div class="code-row">
+            <input id="promoCode" type="text" placeholder="введи код" maxlength="40" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" name="fc-promo">
+            <button type="button" id="promoBtn">ОК</button>
+        </div>
+        <p class="hint" id="promoHint">Код даёт +100 000 $ в эту карьеру. Один раз.</p>
+    </div>
+    <div class="card records-card">
+        <h2>Рекорды</h2>
+        <div id="recordsCreate" class="records"></div>
+    </div>
+</div>
+
+<div id="createScreen" class="splash">
+    <button type="button" id="backToMode" class="back-btn">← К режимам</button>
+    <p class="brand-kicker">⚽ FOOTBALL CAREER</p>
+    <h1 id="createHeading">Новый игрок</h1>
+    <div class="card">
+        <h2 id="createTitle">Создай своего футболиста</h2>
+        <div id="playerFields">
+            <input id="playerName" type="text" placeholder="Имя футболиста" maxlength="24" autocomplete="off">
+            <select id="position">
+                <option value="ST">ST — Нападающий</option>
+                <option value="LW">LW — Левый вингер</option>
+                <option value="RW">RW — Правый вингер</option>
+                <option value="CAM">CAM — Атакующий полузащитник</option>
+                <option value="CM">CM — Полузащитник</option>
+                <option value="CDM">CDM — Опорный полузащитник</option>
+                <option value="CB">CB — Центральный защитник</option>
+                <option value="LB">LB — Левый защитник</option>
+                <option value="RB">RB — Правый защитник</option>
+                <option value="GK">GK — Вратарь</option>
+            </select>
+        </div>
+        <div id="clubFields" hidden>
+            <input id="clubName" type="text" placeholder="Название клуба" maxlength="28" autocomplete="off">
+            <input id="clubCity" type="text" placeholder="Город (например Москва)" maxlength="24" autocomplete="off">
+        </div>
+        <p class="pick-label" id="nationLabel">Национальность</p>
+        <div class="pick-grid nation-pick" id="nationPick"></div>
+        <p class="pick-label" id="avatarLabel">Аватар</p>
+        <div class="pick-grid" id="avatarPick"></div>
+        <button type="button" id="startBtn">Начать карьеру</button>
+    </div>
+</div>
+
+<div id="careerScreen">
+    <header class="career-top">
+        <button type="button" id="exitCareerBtn" class="back-btn">← Меню</button>
+        <h1 id="careerTitle">Моя карьера</h1>
+    </header>
+
+    <div class="card player-card">
+        <div class="fut">
+            <div class="ovr">
+                <strong id="ovrDisplay">60</strong>
+                <small id="futPos">ST</small>
+            </div>
+            <div class="avatar" id="avatar">⚽</div>
+            <b id="playerNameDisplay">Игрок</b>
+            <span id="clubDisplay">Академия</span>
+        </div>
+        <div class="info">
+            <p><span id="labelNation">Нация</span>: <b id="nationDisplay">🇰🇿 Казахстан</b></p>
+            <p><span id="labelPosition">Позиция</span>: <b id="positionDisplay">ST</b></p>
+            <p class="club-dup"><span id="labelClub">Клуб</span>: <b id="clubLine">Академия</b></p>
+            <p id="ageLine">Возраст: <b id="ageDisplay">16</b> · Неделя <b id="weekDisplay">1</b></p>
+            <p id="weekLine" hidden>Неделя <b id="weekDisplayClub">1</b></p>
+        </div>
+        <div class="ratings">
+            <div class="respect">
+                <small>$</small>
+                <strong id="respectDisplay">0</strong>
+            </div>
+            <div class="fame">
+                <small id="fameLabel">РЕП</small>
+                <strong id="fameDisplay">50</strong>
+            </div>
+        </div>
+    </div>
+
+    <div class="card energy-card">
+        <div class="energy-row">
+            <span>Энергия</span>
+            <div class="energy-bar"><i id="energyFill"></i></div>
+            <b id="energyDisplay">100</b>
+        </div>
+    </div>
+
+    <nav class="career-tabs" id="careerTabs" aria-label="Разделы карьеры">
+        <button type="button" data-panel="home" class="on">Главная</button>
+        <button type="button" data-panel="train">Треня</button>
+        <button type="button" data-panel="match">Матч</button>
+        <button type="button" data-panel="club" id="tabClub">Клубы</button>
+        <button type="button" data-panel="more">Ещё</button>
+    </nav>
+
+    <div class="panel on" data-panel="home">
+    <div class="card">
+        <h2>Характеристики</h2>
+        <div id="statList">
+            <div class="stat"><span></span><div class="stat-track"><i></i></div><b></b></div>
+            <div class="stat"><span></span><div class="stat-track"><i></i></div><b></b></div>
+            <div class="stat"><span></span><div class="stat-track"><i></i></div><b></b></div>
+            <div class="stat"><span></span><div class="stat-track"><i></i></div><b></b></div>
+            <div class="stat"><span></span><div class="stat-track"><i></i></div><b></b></div>
+            <div class="stat"><span></span><div class="stat-track"><i></i></div><b></b></div>
+        </div>
+    </div>
+    </div>
+
+    <div class="panel" data-panel="train">
+    <div class="card">
+        <h2 id="trainTitle">Тренировка</h2>
+        <p class="hint" id="trainHint">Тренировка: −16 энергии, +1 неделя. Отдых +50 бесплатно (30 сек) или 100% за $100 (1 сек).</p>
+        <p class="hint lock-hint" id="restLockHint" hidden></p>
+        <div class="train-grid">
+            <button type="button" data-train="pace">⚡ Скорость +2</button>
+            <button type="button" data-train="shooting">🎯 Удар +2</button>
+            <button type="button" data-train="passing">🅰️ Пас +2</button>
+            <button type="button" data-train="dribbling">🕺 Дриблинг +2</button>
+            <button type="button" data-train="defending">🛡️ Защита +2</button>
+            <button type="button" data-train="physical">💪 Физика +2</button>
+        </div>
+        <button type="button" id="restBtn" class="rest">Восстановиться +50</button>
+        <button type="button" id="restFastBtn" class="gold">100% за $100 · 1 сек</button>
+    </div>
+    </div>
+
+    <div class="panel" data-panel="match">
+    <div class="card">
+        <h2>Расписание</h2>
+        <div class="fixture" id="fixtureBox">
+            <small id="fixtureLabel">Следующий матч</small>
+            <b id="fixtureNext">Неделя 2</b>
+            <p id="fixtureHint">Матч раз в 2 недели. Ничья → серия пенальти.</p>
+        </div>
+        <div class="match-grid" id="matchGrid"></div>
+        <p class="save-meta" id="saveHint">💾 Автосохранение каждые 20 сек</p>
+        <p class="last-match" id="lastMatch">Пока нет матчей</p>
+        <p>Матчи: <b id="matches">0</b></p>
+        <p id="winsRow" hidden>Победы: <b id="wins">0</b> · Ничьи: <b id="draws">0</b> · Поражения: <b id="losses">0</b></p>
+        <p id="goalsRow">Голы: <b id="goals">0</b></p>
+        <p id="assistsRow">Ассисты: <b id="assists">0</b></p>
+        <p id="concededRow" hidden>Пропущено: <b id="conceded">0</b></p>
+        <p id="tacklesRow" hidden>Отборы: <b id="tackles">0</b></p>
+        <p id="savesRow" hidden>Сейвы: <b id="saves">0</b></p>
+        <p id="cleanRow" hidden>Сухие матчи: <b id="cleanSheets">0</b></p>
+        <p id="gkConcededRow" hidden>Пропущено: <b id="gkConceded">0</b></p>
+        <button type="button" id="matchBtn" class="gold">📅 ЖДИ ИГРОВОЙ ДЕНЬ</button>
+        <button type="button" id="bribeBtn" class="bribe">🤫 ПОДКУПИТЬ СУДЬЮ</button>
+        <p class="hint" id="bribeHint">Подкуп: 30% поможет, 70% штраф. Репутация падает в любом случае.</p>
+        <p id="onlineRow">Онлайн: <b id="onlineRecord">0–0</b></p>
+        <button type="button" id="onlineBtn" class="online">🌐 ОНЛАЙН БАТЛ</button>
+        <p class="hint">Вне календаря. −18 энергии. Победа даёт $ и репутацию.</p>
+    </div>
+    </div>
+
+    <div class="panel" data-panel="club">
+    <div class="card" id="squadCard" hidden>
+        <h2>Состав</h2>
+        <p class="hint" id="squadHint">Своих игроков пока нет. Купи в трансферном окне.</p>
+        <div class="pitch" id="squadPitch"></div>
+        <div id="squad" class="market-list squad-list"></div>
+    </div>
+
+    <div class="card" id="marketCard" hidden>
+        <h2>Трансферное окно</h2>
+        <p class="hint" id="marketHint">От ЦСКА до легенд Реала. Покупка за $.</p>
+        <div class="market-tabs" id="marketTabs">
+            <button type="button" data-tier="all" class="on">Все</button>
+            <button type="button" data-tier="rpl">РПЛ</button>
+            <button type="button" data-tier="eu">Европа</button>
+            <button type="button" data-tier="leg">Легенды</button>
+        </div>
+        <div class="pos-tabs" id="marketPos">
+            <button type="button" data-pos="all" class="on">Все</button>
+            <button type="button" data-pos="GK">GK</button>
+            <button type="button" data-pos="CB">CB</button>
+            <button type="button" data-pos="LB">LB</button>
+            <button type="button" data-pos="RB">RB</button>
+            <button type="button" data-pos="CDM">CDM</button>
+            <button type="button" data-pos="CM">CM</button>
+            <button type="button" data-pos="CAM">CAM</button>
+            <button type="button" data-pos="LW">LW</button>
+            <button type="button" data-pos="RW">RW</button>
+            <button type="button" data-pos="ST">ST</button>
+        </div>
+        <div id="market" class="market-list"></div>
+    </div>
+
+    <div class="card">
+        <h2 id="transfersTitle">Трансферы</h2>
+        <div id="clubs"></div>
+    </div>
+    </div>
+
+    <div class="panel" data-panel="more">
+    <div class="card code-card">
+        <h2>Код</h2>
+        <div class="code-row">
+            <input id="promoCodeCareer" type="text" placeholder="введи код" maxlength="40" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" name="fc-promo-career">
+            <button type="button" id="promoBtnCareer">ОК</button>
+        </div>
+        <p class="hint" id="promoHintCareer">+100 000 $ · один раз · эта карьера, не FC3</p>
+    </div>
+    <div class="card">
+        <h2>Аукцион ЧМ</h2>
+        <p class="hint">Собери 4-3-3 из случайных игроков ЧМ 1994–2026. Отдельный режим, карьеру не ломает.</p>
+        <button type="button" id="openAuctionBtn" class="gold">🏆 ОТКРЫТЬ АУКЦИОН</button>
+    </div>
+    <div class="card records-card">
+        <h2>Рекорды</h2>
+        <div id="recordsCareer" class="records"></div>
+    </div>
+
+    <div class="card">
+        <h2>История</h2>
+        <div id="log"></div>
+    </div>
+
+    <button type="button" id="newCareerBtn" class="danger">Заново</button>
+    </div>
+
+    <nav class="phone-dock" aria-label="Быстрые действия">
+        <button type="button" id="dockMatch">⚽ Матч</button>
+        <button type="button" id="dockBattle">🌐 Батл</button>
+        <button type="button" id="dockRest">😴 Отдых</button>
+        <button type="button" id="dockMenu">← Меню</button>
+    </nav>
+</div>
+
+<div id="auctionScreen" hidden>
+    <header class="career-top">
+        <button type="button" id="auctionBack" class="back-btn">← Меню</button>
+        <h1>Аукцион ЧМ</h1>
+    </header>
+    <div class="card">
+        <p class="hint">Жми ИГРОК — один легенда за раз, строго в свою позицию (Неймар только LW). 1 перекрутка той же позиции. ЗАНОВО — новый состав.</p>
+        <p class="meta" id="auctionMeta">Пусто · перекруток: 1</p>
+        <div class="pitch auction-pitch" id="auctionPitch"></div>
+        <div class="train-grid auction-actions">
+            <button type="button" id="auctionRollAll" class="gold">ИГРОК</button>
+            <button type="button" id="auctionReset" class="danger">ЗАНОВО</button>
+        </div>
+    </div>
+</div>
+
+<script src="audio.js?v=9" defer></script>
+<script src="game.js?v=9" defer></script>
+</body>
+</html>
