@@ -8,6 +8,8 @@ const Sfx = (() => {
     let musicWanted = false;
     let themeOn = false;
     let themeGen = 0;
+    let themeTimer = 0;
+    let musicNodes = [];
 
     function ensure() {
         const AC = window.AudioContext || window.webkitAudioContext;
@@ -18,19 +20,53 @@ const Sfx = (() => {
             master.gain.value = muted ? 0 : 0.55;
             master.connect(ctx.destination);
             musicGain = ctx.createGain();
-            musicGain.gain.value = 0.2;
+            musicGain.gain.value = 0.16;
             musicGain.connect(master);
         }
         if (ctx.state === "suspended") ctx.resume();
         return ctx;
     }
 
+    function stopMusicVoices() {
+        themeOn = false;
+        themeGen += 1;
+        if (themeTimer) {
+            clearTimeout(themeTimer);
+            themeTimer = 0;
+        }
+        const now = ctx ? ctx.currentTime : 0;
+        musicNodes.forEach(function (node) {
+            try { node.stop(now); } catch (e) {}
+            try { node.disconnect(); } catch (e) {}
+        });
+        musicNodes = [];
+        if (musicGain && ctx) {
+            musicGain.gain.cancelScheduledValues(now);
+            musicGain.gain.setValueAtTime(0, now);
+        }
+    }
+
     function setMuted(value) {
         muted = value;
         localStorage.setItem("fc-muted", muted ? "1" : "0");
-        if (master) master.gain.value = muted ? 0 : 0.55;
-        if (muted) themeOn = false;
-        else if (musicWanted) themeStart();
+        const now = ctx ? ctx.currentTime : 0;
+        if (muted) {
+            stopMusicVoices();
+            if (master && ctx) {
+                master.gain.cancelScheduledValues(now);
+                master.gain.setValueAtTime(0, now);
+            }
+        } else {
+            if (master && ctx) {
+                master.gain.cancelScheduledValues(now);
+                master.gain.setValueAtTime(0.55, now);
+            }
+            if (musicGain && ctx) {
+                musicGain.gain.cancelScheduledValues(now);
+                musicGain.gain.setValueAtTime(0.16, now);
+            }
+            if (musicWanted) themeStart();
+        }
     }
 
     function isMuted() {
@@ -222,43 +258,50 @@ const Sfx = (() => {
         o.connect(g).connect(dest || master);
         o.start(start);
         o.stop(start + dur + 0.03);
+        if (dest === musicGain) musicNodes.push(o);
+    }
+
+    function hat(start, peak) {
+        const src = noise(0.035);
+        const hp = ctx.createBiquadFilter();
+        hp.type = "highpass";
+        hp.frequency.value = 7000;
+        const g = envGain(start, peak, 0.001, 0.035);
+        src.connect(hp).connect(g).connect(musicGain);
+        src.start(start);
+        musicNodes.push(src);
     }
 
     function logo() {
         if (!ensure() || muted) return;
         const t = ctx.currentTime;
-        tone("sawtooth", 196, t, 0.28, 0.16, musicGain);
-        tone("triangle", 247, t + 0.12, 0.32, 0.14, musicGain);
-        tone("sawtooth", 330, t + 0.26, 0.55, 0.18, musicGain);
-        tone("triangle", 392, t + 0.26, 0.7, 0.1, musicGain);
-        tone("sine", 523, t + 0.42, 0.8, 0.08, musicGain);
+        tone("sine", 98, t, 0.35, 0.14, musicGain);
+        tone("sine", 147, t + 0.08, 0.4, 0.1, musicGain);
+        tone("sine", 196, t + 0.2, 0.55, 0.12, musicGain);
+        crowd(t, 0.8, 0.08);
     }
 
-    function playThemeLoop(when) {
+    function playThemeLoop() {
         if (!themeOn || !ctx || muted) return;
-        const beat = 0.46;
-        const dest = musicGain;
-        const melody = [
-            [0, 392], [1, 466], [2, 523], [3, 622],
-            [4, 587], [5, 523], [6, 466], [7, 392],
-            [8, 415], [9, 466], [10, 523], [11, 392],
-            [12, 349], [13, 392], [14, 523], [15, 784]
-        ];
-        melody.forEach(function (n) {
-            tone("triangle", n[1], when + n[0] * beat, beat * 0.92, 0.07, dest);
-            if (n[0] % 4 === 0) tone("sawtooth", n[1] / 2, when + n[0] * beat, beat * 1.6, 0.035, dest);
-        });
-        for (let i = 0; i < 16; i++) {
-            const bass = i % 8 < 4 ? 65.41 : (i % 4 < 2 ? 49 : 51.91);
-            tone("sine", bass, when + i * beat, beat * 0.7, 0.09, dest);
-            if (i % 2 === 0) tone("sine", 90, when + i * beat, 0.08, 0.06, dest, 42);
-        }
-        const loopLen = 16 * beat;
-        const gen = themeGen;
-        const delay = Math.max(40, (when + loopLen - ctx.currentTime) * 1000 - 30);
-        setTimeout(function () {
-            if (themeOn && gen === themeGen) playThemeLoop(when + loopLen);
-        }, delay);
+        if (musicGain) musicGain.gain.setValueAtTime(0.18, ctx.currentTime);
+        const src = noise(3.4);
+        src.loop = true;
+        const lp = ctx.createBiquadFilter();
+        lp.type = "lowpass";
+        lp.frequency.value = 580;
+        const g = ctx.createGain();
+        g.gain.value = 0.2;
+        src.connect(lp).connect(g).connect(musicGain);
+        src.start();
+        musicNodes.push(src);
+        const drone = ctx.createOscillator();
+        drone.type = "sine";
+        drone.frequency.value = 49;
+        const dg = ctx.createGain();
+        dg.gain.value = 0.045;
+        drone.connect(dg).connect(musicGain);
+        drone.start();
+        musicNodes.push(drone);
     }
 
     function themeStart() {
@@ -266,19 +309,44 @@ const Sfx = (() => {
         if (!ensure() || muted || themeOn) return;
         themeOn = true;
         themeGen += 1;
-        playThemeLoop(ctx.currentTime + 0.08);
+        playThemeLoop();
     }
 
     function themeStop() {
         musicWanted = false;
-        themeOn = false;
-        themeGen += 1;
+        stopMusicVoices();
+    }
+
+    function halt() {
+        stopMusicVoices();
+        if (ctx && ctx.state === "running") ctx.suspend();
+    }
+
+    function wake() {
+        if (!ctx || muted) return;
+        if (ctx.state === "suspended") ctx.resume();
+        if (musicWanted && !themeOn) themeStart();
+    }
+
+    document.addEventListener("visibilitychange", function () {
+        if (document.visibilityState === "hidden") halt();
+        else wake();
+    });
+    window.addEventListener("pagehide", halt);
+    window.addEventListener("freeze", halt);
+
+    function injury() {
+        if (!ensure() || muted) return;
+        const t = ctx.currentTime;
+        osc("sine", 90, t, 0.22, 0.22, 42);
+        osc("square", 160, t + 0.04, 0.18, 0.1, 70);
+        crowd(t, 0.7, 0.08);
     }
 
     return {
         click, start, train, rest, whistle, goal, miss,
-        transferBig, matchKickoff, champ, ding, suspense, error,
-        logo, themeStart, themeStop,
+        transferBig, matchKickoff, champ, ding, suspense, error, injury,
+        logo, themeStart, themeStop, halt, wake,
         unlock, setMuted, isMuted
     };
 })();
