@@ -523,6 +523,10 @@ function newPlayer(name, position, nation, avatar) {
         loanPlan: "",
         bankUntil: 0,
         matchPlan: "balance",
+        draftTokens: 0,
+        draftRun: null,
+        exclusives: [],
+        draftMark: "",
         stats: Object.assign({}, START_STATS[pos] || START_STATS.ST)
     };
 }
@@ -574,6 +578,10 @@ function newClub(name, city, nation, avatar) {
         loanPlan: "",
         bankUntil: 0,
         matchPlan: "balance",
+        draftTokens: 0,
+        draftRun: null,
+        exclusives: [],
+        draftMark: "",
         stats: {
             pace: 55,
             shooting: 56,
@@ -1418,6 +1426,7 @@ function ballonRaceOn() {
 
 function maybeGrantBallon() {
     if (!ballonRaceOn()) return false;
+    if (weekInYear(player.week) !== BALLON_IN_YEAR) return false;
     if (ballonRank() !== 1) return false;
     if (player.ballonYear === seasonYear()) return false;
     player.ballonYear = seasonYear();
@@ -1953,6 +1962,17 @@ function signSponsor(id) {
     save();
 }
 
+function dropSponsor(id) {
+    if (!player || !player.name) return;
+    const sp = sponsorById(id);
+    if (!sp || !ownedSponsor(id)) return;
+    player.sponsors = (player.sponsors || []).filter(function (row) { return row.id !== id; });
+    Sfx.click();
+    addLog(t("logDealDrop", { name: sp.emoji + " " + sp.name }));
+    renderAll();
+    save();
+}
+
 function updateSponsors() {
     const box = get("sponsorList");
     const week = get("sponsorWeek");
@@ -1978,6 +1998,13 @@ function updateSponsors() {
             });
         btn.disabled = !!mine || !player || !player.name;
         box.appendChild(btn);
+        if (mine) {
+            const drop = document.createElement("button");
+            drop.type = "button";
+            drop.setAttribute("data-drop", sp.id);
+            drop.textContent = t("dealDrop");
+            box.appendChild(drop);
+        }
     });
 }
 
@@ -2080,6 +2107,707 @@ function updateBrand() {
         body.appendChild(tr);
     });
     updateSponsors();
+}
+
+const EXCLUSIVES = [
+    { id: "x-cr7", name: "Роналду Драфт", en: "Draft Ronaldo", pos: "ST", ovr: 99, flag: "🇵🇹", club: "Эксклюзив", exclusive: true },
+    { id: "x-felix", name: "Феликс Драфт", en: "Draft Félix", pos: "CAM", ovr: 92, flag: "🇵🇹", club: "Эксклюзив", exclusive: true },
+    { id: "x-messi", name: "Месси", en: "Messi", pos: "RW", ovr: 96, flag: "🇦🇷", club: "Inter Miami", exclusive: true },
+    { id: "x-modric", name: "Модрич", en: "Modrić", pos: "CM", ovr: 85, flag: "🇭🇷", club: "Milan", exclusive: true },
+    { id: "x-mbappe", name: "Мбаппе", en: "Mbappé", pos: "ST", ovr: 94, flag: "🇫🇷", club: "Real Madrid", exclusive: true },
+    { id: "x-vini", name: "Винисиус", en: "Vinicius", pos: "LW", ovr: 90, flag: "🇧🇷", club: "Real Madrid", exclusive: true },
+    { id: "x-bellingham", name: "Беллингем", en: "Bellingham", pos: "CM", ovr: 89, flag: "🇬🇧", club: "Real Madrid", exclusive: true },
+    { id: "x-lautaro", name: "Лаутаро", en: "Lautaro", pos: "ST", ovr: 90, flag: "🇦🇷", club: "Интер", exclusive: true },
+    { id: "x-barella", name: "Барелла", en: "Barella", pos: "CM", ovr: 87, flag: "🇮🇹", club: "Интер", exclusive: true },
+    { id: "x-leao", name: "Леау", en: "Leão", pos: "LW", ovr: 88, flag: "🇵🇹", club: "Milan", exclusive: true },
+    { id: "x-musiala", name: "Мусиала", en: "Musiala", pos: "CAM", ovr: 91, flag: "🇩🇪", club: "Bayern", exclusive: true },
+    { id: "x-kane", name: "Кейн", en: "Kane", pos: "ST", ovr: 90, flag: "🇬🇧", club: "Bayern", exclusive: true },
+    { id: "x-kimmich", name: "Киммих", en: "Kimmich", pos: "CM", ovr: 88, flag: "🇩🇪", club: "Bayern", exclusive: true },
+    { id: "x-yamal", name: "Ямаль", en: "Yamal", pos: "RW", ovr: 89, flag: "🇪🇸", club: "Barcelona", exclusive: true },
+    { id: "x-pedri", name: "Педри", en: "Pedri", pos: "CM", ovr: 87, flag: "🇪🇸", club: "Barcelona", exclusive: true },
+    { id: "x-raphinha", name: "Рафинья", en: "Raphinha", pos: "RW", ovr: 86, flag: "🇧🇷", club: "Barcelona", exclusive: true },
+    { id: "x-salah", name: "Салах", en: "Salah", pos: "RW", ovr: 93, flag: "🇪🇬", club: "Liverpool", exclusive: true },
+    { id: "x-haaland", name: "Холанд", en: "Haaland", pos: "ST", ovr: 91, flag: "🇳🇴", club: "City", exclusive: true },
+    { id: "x-vandijk", name: "Ван Дейк", en: "Van Dijk", pos: "CB", ovr: 88, flag: "🇳🇱", club: "Liverpool", exclusive: true }
+];
+const DRAFTS = [
+    { id: "duo", title: "dropLinkT", text: "dropLink", reward: ["x-messi", "x-modric"], tone: "dusk" },
+    { id: "ucl", title: "dropUclT", text: "dropUcl", reward: ["x-mbappe", "x-vini", "x-bellingham"], tone: "rainbow", ms: 8 * 24 * 60 * 60 * 1000 },
+    { id: "serie", title: "dropSerieT", text: "dropSerie", reward: ["x-lautaro", "x-barella", "x-leao"], tone: "serie" },
+    { id: "bund", title: "dropBundT", text: "dropBund", reward: ["x-musiala", "x-kane", "x-kimmich"], tone: "bund" },
+    { id: "liga", title: "dropLigaT", text: "dropLiga", reward: ["x-yamal", "x-pedri", "x-raphinha"], tone: "liga" },
+    { id: "epl", title: "dropEplT", text: "dropEpl", reward: ["x-salah", "x-haaland", "x-vandijk"], tone: "epl" }
+];
+const DRAFT_XI = ["GK", "LB", "CB", "CB", "RB", "CM", "CAM", "CM", "LW", "ST", "RW"];
+const DRAFT_LINE_IX = [[8, 9, 10], [5, 6, 7], [1, 2, 3, 4], [0]];
+const DROP_MS = 4 * 24 * 60 * 60 * 1000;
+const DROP_START = Date.UTC(2026, 9, 8);
+const CLOCK_KEY = "fc-clock";
+
+function gameNow() {
+    let extra = 0;
+    try { extra = Number(localStorage.getItem(CLOCK_KEY)) || 0; } catch (e) {}
+    return Date.now() + extra;
+}
+
+function shiftClock(ms) {
+    let extra = 0;
+    try { extra = Number(localStorage.getItem(CLOCK_KEY)) || 0; } catch (e) {}
+    try { localStorage.setItem(CLOCK_KEY, String(extra + ms)); } catch (e) {}
+}
+
+function exclusiveById(id) {
+    return EXCLUSIVES.find(function (row) { return row.id === id; }) || null;
+}
+
+function dropLength(drop) {
+    return (drop && drop.ms) || DROP_MS;
+}
+
+function dropNow() {
+    const gone = Math.max(0, gameNow() - DROP_START);
+    let cycle = 0;
+    DRAFTS.forEach(function (drop) { cycle += dropLength(drop); });
+    const loops = Math.floor(gone / cycle);
+    let rest = gone % cycle;
+    for (let i = 0; i < DRAFTS.length; i++) {
+        const len = dropLength(DRAFTS[i]);
+        if (rest < len) {
+            const left = len - rest;
+            return {
+                drop: DRAFTS[i],
+                n: loops * DRAFTS.length + i,
+                days: Math.max(1, Math.ceil(left / 86400000)),
+                left: left
+            };
+        }
+        rest -= len;
+    }
+    return { drop: DRAFTS[0], n: loops * DRAFTS.length, days: 4, left: DROP_MS };
+}
+
+const PITY_A = 25;
+const PITY_B = 10;
+const PHASE_PAY = { A: 8, B: 3, C: 1 };
+
+function ensureDraft() {
+    if (!player) return;
+    if (typeof player.draftTokens !== "number") player.draftTokens = 0;
+    if (typeof player.draftNote !== "string") player.draftNote = "";
+    if (!Array.isArray(player.exclusives)) player.exclusives = [];
+    if (!player.draftMark) player.draftMark = "";
+    if (typeof player.draftPityA !== "number") player.draftPityA = PITY_A;
+    if (typeof player.draftPityB !== "number") player.draftPityB = PITY_B;
+    if (typeof player.phaseTokens !== "number") player.phaseTokens = 0;
+    if (!Array.isArray(player.draftBag)) player.draftBag = [];
+    if (player.draftOffer && !Array.isArray(player.draftOffer.ids)) player.draftOffer = null;
+    if (player.draftRun) {
+        player.draftTokens += 1;
+        player.draftRun = null;
+        save();
+    }
+}
+
+function syncDraftWindow() {
+    if (!player || !player.name) return;
+    ensureDraft();
+    const now = dropNow();
+    const mark = now.drop.id + ":" + now.n;
+    if (player.draftMark === mark) return;
+    player.draftMark = mark;
+    player.draftTokens += 1;
+    addLog(t("logDraft", { name: t(now.drop.title) }));
+    save();
+}
+
+function updateDrop() {
+    const card = get("dropCard");
+    const club = !!(player && player.name && isClub());
+    if (card) card.hidden = !club;
+    if (!club) {
+        paintLive();
+        return;
+    }
+    syncDraftWindow();
+    const now = dropNow();
+    const title = get("dropTitle");
+    const text = get("dropText");
+    const next = get("dropNext");
+    const kicker = get("dropKicker");
+    if (kicker) kicker.textContent = t("dropKicker");
+    if (title) title.textContent = t(now.drop.title);
+    if (text) text.textContent = t(now.drop.text);
+    if (next) next.textContent = t("dropNext", { n: now.days, t: player && player.name ? player.draftTokens : 0 });
+    paintExclusiveCards(get("dropCards"));
+    paintLive();
+}
+
+function draftBag(pos) {
+    if (pos === "GK") return ["GK"];
+    if (pos === "LB") return ["LB"];
+    if (pos === "RB") return ["RB"];
+    if (pos === "CB") return ["CB"];
+    if (pos === "CAM") return ["CAM"];
+    if (pos === "LW") return ["LW"];
+    if (pos === "RW") return ["RW"];
+    if (pos === "ST") return ["ST"];
+    return ["CM", "CDM"];
+}
+
+function shuffleIds(list) {
+    const copy = list.slice();
+    for (let i = copy.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        const tmp = copy[i];
+        copy[i] = copy[j];
+        copy[j] = tmp;
+    }
+    return copy;
+}
+
+function draftPool(round, picked, run) {
+    const pos = DRAFT_XI[round];
+    const bag = draftBag(pos);
+    const pool = everyStar().filter(function (star) {
+        return star.id && bag.indexOf(star.pos) >= 0 && picked.indexOf(star.id) < 0;
+    });
+    const ids = shuffleIds(pool).slice(0, 5).map(function (star) { return star.id; });
+    const draft = DRAFTS.find(function (row) { return row.id === (run && run.id); }) || dropNow().drop;
+    if (!run.shownEx) run.shownEx = [];
+    const ex = (draft.reward || []).map(exclusiveById).find(function (row) {
+        return row && row.pos === pos && run.shownEx.indexOf(row.id) < 0 && picked.indexOf(row.id) < 0;
+    });
+    if (ex && ids.length) {
+        ids[Math.floor(Math.random() * ids.length)] = ex.id;
+        run.shownEx.push(ex.id);
+    }
+    return ids;
+}
+
+function starCard(id) {
+    return exclusiveById(id) || TRANSFER_STARS.find(function (star) { return star.id === id; }) || everyStar().find(function (star) { return star.id === id; }) || null;
+}
+
+function futTier(star) {
+    if (!star) return "gold";
+    if (star.exclusive) return "exclusive";
+    if ((star.ovr || 0) >= 90) return "special";
+    if ((star.ovr || 0) >= 83) return "gold";
+    if ((star.ovr || 0) >= 75) return "silver";
+    return "bronze";
+}
+
+function liveReward(id) {
+    return (dropNow().drop.reward || []).indexOf(id) >= 0;
+}
+
+function paintExclusiveCards(box) {
+    if (!box) return;
+    box.innerHTML = "";
+    (dropNow().drop.reward || []).forEach(function (id) {
+        const star = exclusiveById(id);
+        if (!star) return;
+        const card = document.createElement("div");
+        card.className = "live-card tone-" + (dropNow().drop.tone || "dusk");
+        const ovr = document.createElement("b");
+        ovr.textContent = String(star.ovr);
+        const name = document.createElement("span");
+        name.textContent = (star.flag ? star.flag + " " : "") + (shown(star) || star.name || "");
+        const pos = document.createElement("small");
+        pos.textContent = star.pos || "";
+        card.appendChild(ovr);
+        card.appendChild(name);
+        card.appendChild(pos);
+        box.appendChild(card);
+    });
+}
+
+function liveClock() {
+    const sec = Math.max(0, Math.ceil(dropNow().left / 1000));
+    const d = Math.floor(sec / 86400);
+    const h = Math.floor((sec % 86400) / 3600);
+    const m = Math.floor((sec % 3600) / 60);
+    const s = sec % 60;
+    const pad = function (n) { return (n < 10 ? "0" : "") + n; };
+    return t("liveClock", { d: d, h: pad(h), m: pad(m), s: pad(s) });
+}
+
+let liveMark = "";
+function paintLive() {
+    const now = dropNow();
+    const title = get("liveTitle");
+    const text = get("liveText");
+    const left = get("liveLeft");
+    const kicker = get("liveKicker");
+    if (kicker) kicker.textContent = t("liveKicker");
+    if (title) title.textContent = t(now.drop.title);
+    if (text) text.textContent = t(now.drop.text);
+    if (left) left.textContent = liveClock();
+    const only = get("liveOnly");
+    if (only) only.textContent = now.drop.tone === "rainbow" ? t("liveOnlyLong") : t("liveOnly");
+    const bar = get("liveUpd");
+    if (bar) bar.className = "live-upd tone-" + (now.drop.tone || "dusk");
+    paintExclusiveCards(get("liveCards"));
+    const mark = now.drop.id + ":" + now.n;
+    const flipped = liveMark && liveMark !== mark;
+    liveMark = mark;
+    if (flipped) updateDrop();
+}
+
+function openDraft() {
+    const box = get("draftOverlay");
+    if (!box || !player || !player.name || !isClub()) return;
+    box.hidden = false;
+    renderDraft();
+}
+
+function closeDraft() {
+    const box = get("draftOverlay");
+    if (box) box.hidden = true;
+}
+
+function personKey(star) {
+    const raw = String((star && (star.en || star.name)) || "").toLowerCase();
+    const plain = raw.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const bits = plain.split(/[^a-z]+/).filter(Boolean);
+    if (bits.length >= 2 && (bits[bits.length - 2] === "van" || bits[bits.length - 2] === "de")) {
+        return bits[bits.length - 2] + bits[bits.length - 1];
+    }
+    return bits.length ? bits[bits.length - 1] : "";
+}
+
+function draftPools() {
+    const blocked = {};
+    (dropNow().drop.reward || []).forEach(function (id) {
+        const ex = exclusiveById(id);
+        const key = personKey(ex);
+        if (key) blocked[key] = true;
+    });
+    const stars = everyStar().filter(function (star) {
+        if (!star || !star.id || star.dead || star.exclusive) return false;
+        const key = personKey(star);
+        return !key || !blocked[key];
+    });
+    const pools = {
+        A: stars.filter(function (star) { return (star.ovr || 0) >= 90; }),
+        B: stars.filter(function (star) { return (star.ovr || 0) >= 83 && (star.ovr || 0) < 90; }),
+        C: stars.filter(function (star) { return (star.ovr || 0) >= 74 && (star.ovr || 0) < 83; })
+    };
+    (dropNow().drop.reward || []).forEach(function (id) {
+        const ex = exclusiveById(id);
+        if (ex && !pools.A.some(function (star) { return star.id === ex.id; })) pools.A.push(ex);
+    });
+    return pools;
+}
+
+function keepStar(star) {
+    if (!star) return;
+    if (star.exclusive) grantExclusive([star.id]);
+    else if (!isFriend(star.id)) addFriend(star);
+}
+
+function spinDraft() {
+    ensureDraft();
+    if (!isClub()) return;
+    if (player.draftOffer) return;
+    if (player.draftTokens < 1) {
+        player.draftNote = t("draftNeed", { n: dropNow().days });
+        renderDraft();
+        return;
+    }
+    const pools = draftPools();
+    player.draftTokens -= 1;
+    player.draftPityA -= 1;
+    player.draftPityB -= 1;
+    const roll = Math.random();
+    let pool = "C";
+    if (player.draftPityA <= 0 || roll < poolARate() / 100) pool = "A";
+    else if (player.draftPityB <= 0 || roll < 0.28) pool = "B";
+    if (!pools[pool].length) pool = pools.B.length ? "B" : "C";
+    if (pool === "A") {
+        player.draftPityA = PITY_A;
+        player.draftPityB = PITY_B;
+    } else if (pool === "B") player.draftPityB = PITY_B;
+    const ready = (pools[pool] || []).filter(function (row) { return row && row.id && row.name && row.ovr; });
+    if (!ready.length) {
+        player.draftTokens += 1;
+        player.draftNote = t("draftNeed", { n: dropNow().days });
+        renderDraft();
+        return;
+    }
+    const star = ready[Math.floor(Math.random() * ready.length)];
+    player.draftBag.unshift({ uid: Date.now() + "-" + Math.floor(Math.random() * 999), id: star.id, pool: pool });
+    if (player.draftBag.length > 12) player.draftBag.length = 12;
+    player.draftLast = {
+        id: star.id,
+        pool: pool,
+        name: star.name,
+        en: star.en || "",
+        ovr: star.ovr,
+        pos: star.pos || "",
+        flag: star.flag || "",
+        club: star.club || star.home || ""
+    };
+    keepStar(star);
+    grantSquad(star);
+    player.draftNote = t("draftGot", { pool: pool, name: shown(star) });
+    addLog(player.draftNote);
+    showPull(player.draftLast);
+    updateSquad();
+    save();
+    updateDrop();
+    renderDraft();
+}
+
+function exchangeBag(uid) {
+    ensureDraft();
+    const item = player.draftBag.find(function (row) { return row.uid === uid; });
+    if (!item) return;
+    const pay = PHASE_PAY[item.pool] || 1;
+    player.phaseTokens += pay;
+    player.draftBag = player.draftBag.filter(function (row) { return row.uid !== uid; });
+    player.draftNote = t("draftSold", { n: pay });
+    save();
+    renderDraft();
+}
+
+function openPick(count, cost, poolKey) {
+    ensureDraft();
+    if (player.draftOffer) return;
+    if (player.phaseTokens < cost) {
+        player.draftNote = t("pickPoor");
+        renderDraft();
+        return;
+    }
+    const pools = draftPools();
+    const list = pools[poolKey] && pools[poolKey].length ? pools[poolKey] : pools.C;
+    const ids = shuffleIds(list).slice(0, count).map(function (star) { return star.id; });
+    if (count === 3) {
+        const ex = (dropNow().drop.reward || []).map(exclusiveById).find(function (row) {
+            return row && player.exclusives.indexOf(row.id) < 0;
+        });
+        if (ex) ids[0] = ex.id;
+    }
+    player.phaseTokens -= cost;
+    player.draftOffer = { ids: ids.filter(Boolean) };
+    save();
+    renderDraft();
+}
+
+function takeOffer(id) {
+    ensureDraft();
+    if (!player.draftOffer || player.draftOffer.ids.indexOf(id) < 0) return;
+    const star = starCard(id);
+    if (star && star.exclusive && !liveReward(star.id)) {
+        player.draftOffer = null;
+        player.draftNote = t("liveGone");
+        save();
+        renderDraft();
+        return;
+    }
+    keepStar(star);
+    player.draftOffer = null;
+    player.draftNote = star ? t("draftGot", { pool: star.exclusive ? "A" : "B", name: shown(star) }) : "";
+    if (player.draftNote) addLog(player.draftNote);
+    save();
+    renderDraft();
+}
+
+function grantExclusive(ids) {
+    ensureDraft();
+    for (let i = 0; i < ids.length; i++) {
+        const ex = exclusiveById(ids[i]);
+        if (!ex || player.exclusives.indexOf(ex.id) >= 0) continue;
+        player.exclusives.push(ex.id);
+        addFriend(ex);
+        const row = player.socFriends.find(function (friend) { return friend.id === ex.id; });
+        if (row) {
+            row.exclusive = true;
+            row.en = ex.en;
+            row.ovr = ex.ovr;
+            row.club = ex.club;
+        }
+        return ex;
+    }
+    return null;
+}
+
+function pullFace(last) {
+    if (!last) return null;
+    const live = last.id ? starCard(last.id) : null;
+    const name = (live && live.name) || last.name || "";
+    const ovr = (live && live.ovr) || last.ovr || 0;
+    if (!name || !ovr) return null;
+    const row = live || last;
+    return {
+        name: shown(row) || name,
+        ovr: ovr,
+        pos: (live && live.pos) || last.pos || "",
+        flag: (live && live.flag) || last.flag || "",
+        club: (live && (live.club || live.home)) || last.club || "",
+        pool: last.pool || ""
+    };
+}
+
+function clubTitle(club) {
+    const ru = {
+        "City": "Манчестер Сити", "Real Madrid": "Реал Мадрид", "Liverpool": "Ливерпуль",
+        "Bayern": "Бавария", "Barcelona": "Барселона", "Milan": "Милан", "Интер": "Интер",
+        "Inter Miami": "Интер Майами", "Al-Nassr": "Аль-Наср", "Chelsea": "Челси"
+    };
+    const en = {
+        "City": "Manchester City", "Real Madrid": "Real Madrid", "Liverpool": "Liverpool",
+        "Bayern": "Bayern", "Barcelona": "Barcelona", "Milan": "Milan", "Интер": "Inter",
+        "Inter Miami": "Inter Miami", "Al-Nassr": "Al-Nassr", "Chelsea": "Chelsea"
+    };
+    if (!club) return "";
+    const table = langEn() ? en : ru;
+    return table[club] || club;
+}
+
+let pullTimer = 0;
+function clearPullTimer() {
+    if (pullTimer) {
+        clearTimeout(pullTimer);
+        pullTimer = 0;
+    }
+}
+
+function showPull(last) {
+    const face = pullFace(last);
+    const box = get("pullReveal");
+    if (!box || !face) return;
+    clearPullTimer();
+    const kicker = get("pullKicker");
+    const pool = get("pullPool");
+    const ovr = get("pullOvr");
+    const name = get("pullName");
+    const meta = get("pullMeta");
+    if (kicker) kicker.textContent = t("draftDrop");
+    if (pool) pool.textContent = "Пул " + face.pool;
+    if (ovr) ovr.textContent = String(face.ovr);
+    if (name) name.textContent = (face.flag ? face.flag + " " : "") + face.name;
+    if (meta) meta.textContent = face.pos + (face.club ? " · " + clubTitle(face.club) : "");
+    const card = box.querySelector(".pull-card");
+    const intro = get("pullIntro");
+    const introText = get("pullIntroText");
+    if (card) {
+        const tone = last && last.id && liveReward(last.id) ? (dropNow().drop.tone || "dusk") : "";
+        card.className = "pull-card" + (tone ? " tone-" + tone : "");
+    }
+    if (face.pool !== "A" || !intro || !introText) {
+        if (intro) intro.hidden = true;
+        if (card) card.hidden = false;
+        box.hidden = false;
+        return;
+    }
+    const steps = [
+        { ms: 2000, kind: "pos", text: face.pos || "" },
+        { ms: 2000, kind: "flag", text: face.flag || "" },
+        { ms: 2000, kind: "club", text: clubTitle(face.club) },
+        { ms: 1000, kind: "black", text: "" }
+    ];
+    if (card) card.hidden = true;
+    intro.hidden = false;
+    box.hidden = false;
+    Sfx.unlock();
+    if (Sfx.poolA) Sfx.poolA();
+    let step = 0;
+    function frame() {
+        const beat = steps[step];
+        intro.className = "pull-intro" + (beat.kind === "black" ? " black" : "");
+        introText.className = beat.kind;
+        introText.textContent = beat.text;
+        step += 1;
+        pullTimer = setTimeout(function () {
+            pullTimer = 0;
+            if (step < steps.length) frame();
+            else {
+                intro.hidden = true;
+                if (card) card.hidden = false;
+            }
+        }, beat.ms);
+    }
+    frame();
+}
+
+function hidePull() {
+    clearPullTimer();
+    const box = get("pullReveal");
+    const intro = get("pullIntro");
+    if (intro) intro.hidden = true;
+    if (box) box.hidden = true;
+}
+
+function futButton(star, onPick) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "fut-card " + futTier(star);
+    const ovr = document.createElement("span");
+    ovr.className = "fut-ovr";
+    ovr.textContent = String(star.ovr || 0);
+    const pos = document.createElement("span");
+    pos.className = "fut-pos";
+    pos.textContent = star.pos || "";
+    const name = document.createElement("b");
+    name.textContent = shown(star);
+    const meta = document.createElement("small");
+    meta.textContent = (star.flag || "") + " " + (star.club || "");
+    btn.appendChild(ovr);
+    btn.appendChild(pos);
+    btn.appendChild(name);
+    btn.appendChild(meta);
+    btn.addEventListener("click", function () { Sfx.click(); onPick(); });
+    return btn;
+}
+
+let draftShowPools = false;
+
+function poolLine(label, pity) {
+    const row = document.createElement("p");
+    row.className = "pool-row";
+    const name = document.createElement("b");
+    name.textContent = label;
+    row.appendChild(name);
+    if (pity) {
+        const left = document.createElement("span");
+        left.textContent = pity;
+        row.appendChild(left);
+    }
+    return row;
+}
+
+function renderDraft() {
+    ensureDraft();
+    const now = dropNow();
+    const pools = draftPools();
+    const kicker = get("draftKicker");
+    const title = get("draftTitle");
+    const hint = get("draftHint");
+    const picks = get("draftPicks");
+    if (kicker) kicker.textContent = t("dropKicker");
+    if (title) title.textContent = t(now.drop.title);
+    if (hint) hint.textContent = player.draftNote || t(now.drop.text);
+    if (!picks) return;
+    picks.textContent = "";
+    const face = pullFace(player.draftLast);
+    if (!face) player.draftLast = null;
+    if (face && !player.draftOffer) {
+        const reveal = document.createElement("div");
+        reveal.className = "drop-reveal";
+        const k = document.createElement("p");
+        k.className = "k";
+        k.textContent = t("draftDrop");
+        const who = document.createElement("p");
+        who.className = "drop-who";
+        who.textContent = (face.flag ? face.flag + " " : "") + face.name;
+        const sub = document.createElement("p");
+        sub.className = "drop-sub";
+        sub.textContent = "Пул " + face.pool + " · " + face.ovr + " " + face.pos + (face.club ? " · " + face.club : "");
+        reveal.appendChild(k);
+        reveal.appendChild(who);
+        reveal.appendChild(sub);
+        picks.appendChild(reveal);
+    }
+    picks.appendChild(poolLine(t("poolA"), t("pityA", { n: player.draftPityA })));
+    picks.appendChild(poolLine(t("poolB"), t("pityB", { n: player.draftPityB })));
+    picks.appendChild(poolLine(t("poolC"), t("poolCsub", { n: pools.C.length })));
+    if (player.draftOffer) {
+        const row = document.createElement("div");
+        row.className = "fut-row";
+        player.draftOffer.ids.forEach(function (id) {
+            const star = starCard(id);
+            if (!star) return;
+            row.appendChild(futButton(star, function () { takeOffer(id); }));
+        });
+        picks.appendChild(row);
+        return;
+    }
+    const spin = document.createElement("button");
+    spin.type = "button";
+    spin.className = "gold";
+    spin.textContent = t("draftSpin");
+    spin.addEventListener("click", function () { Sfx.click(); spinDraft(); });
+    picks.appendChild(spin);
+    const phase = document.createElement("p");
+    phase.className = "hint";
+    phase.textContent = t("phaseN", { n: player.phaseTokens });
+    picks.appendChild(phase);
+    const pick5 = document.createElement("button");
+    pick5.type = "button";
+    pick5.textContent = t("pick5");
+    pick5.addEventListener("click", function () { Sfx.click(); openPick(5, 5, "B"); });
+    const pick3 = document.createElement("button");
+    pick3.type = "button";
+    pick3.textContent = t("pick3");
+    pick3.addEventListener("click", function () { Sfx.click(); openPick(3, 12, "A"); });
+    picks.appendChild(pick5);
+    picks.appendChild(pick3);
+    if (player.draftBag.length) {
+        const bagTitle = document.createElement("p");
+        bagTitle.className = "hint";
+        bagTitle.textContent = t("draftBag");
+        picks.appendChild(bagTitle);
+        player.draftBag.forEach(function (item) {
+            const star = starCard(item.id);
+            const row = document.createElement("div");
+            row.className = "bag-row";
+            const name = document.createElement("b");
+            name.textContent = (star ? shown(star) : item.id) + " · " + item.pool;
+            const sell = document.createElement("button");
+            sell.type = "button";
+            sell.textContent = t("draftSell", { n: PHASE_PAY[item.pool] || 1 });
+            sell.addEventListener("click", function () { Sfx.click(); exchangeBag(item.uid); });
+            row.appendChild(name);
+            row.appendChild(sell);
+            picks.appendChild(row);
+        });
+    }
+    const more = document.createElement("button");
+    more.type = "button";
+    more.textContent = t("draftMore");
+    more.addEventListener("click", function () {
+        Sfx.click();
+        draftShowPools = !draftShowPools;
+        renderDraft();
+    });
+    picks.appendChild(more);
+    if (draftShowPools) {
+        ["A", "B", "C"].forEach(function (key) {
+            const line = document.createElement("p");
+            line.className = "hint";
+            line.textContent = key + ": " + pools[key].slice(0, 4).map(shown).join(", ");
+            picks.appendChild(line);
+        });
+    }
+}
+
+function runAdmin(kind) {
+    const note = get("adminNote");
+    if (kind === "day") {
+        shiftClock(86400000);
+        if (note) note.textContent = t("adminTime");
+    } else if (kind === "skip") {
+        shiftClock(DROP_MS);
+        if (note) note.textContent = t("adminTime");
+    } else if (!player || !player.name) {
+        if (note) note.textContent = t("adminNoCareer");
+        return;
+    } else if (kind === "money") {
+        player.respect = (player.respect || 0) + 10000;
+        save();
+        updateRespect();
+        if (note) note.textContent = t("adminCash");
+        addLog(t("adminCash"));
+    } else if (kind === "draft") {
+        ensureDraft();
+        player.draftTokens += 1;
+        save();
+        if (note) note.textContent = t("adminTok");
+        addLog(t("adminTok"));
+    }
+    updateDrop();
+    if (get("draftOverlay") && !get("draftOverlay").hidden) renderDraft();
 }
 
 function updateHook() {
@@ -2307,6 +3035,11 @@ function load() {
         if (typeof player.loan !== "number") player.loan = 0;
         if (!player.bankPlan) player.bankPlan = player.bank > 0 ? "season" : "";
         if (!player.loanPlan) player.loanPlan = "";
+        if (!player.dropSeen) player.dropSeen = "";
+        if (typeof player.draftTokens !== "number") player.draftTokens = 0;
+        if (!Array.isArray(player.exclusives)) player.exclusives = [];
+        if (!player.draftMark) player.draftMark = "";
+        if (!player.draftRun || typeof player.draftRun !== "object") player.draftRun = null;
         if (typeof player.bankUntil !== "number") player.bankUntil = 0;
         if (typeof player.fame !== "number") player.fame = 50;
         if (typeof player.onlineWins !== "number") player.onlineWins = 0;
@@ -2993,7 +3726,7 @@ function mateLine(star, club, index) {
     return t(key, { name: shown(star), pos: star.pos || "", club: ui(club) });
 }
 
-function starCard(star, home, mine) {
+function mateCard(star, home, mine) {
     return {
         author: shown(star),
         pos: star.pos,
@@ -3015,11 +3748,10 @@ function mateRoster() {
     function push(star, home, mine) {
         if (!star || !star.id || seen[star.id]) return;
         seen[star.id] = true;
-        authors.push(starCard(star, home, mine));
+        authors.push(mateCard(star, home, mine));
     }
     if (isClub()) squadStars().forEach(function (star) { push(star, club, true); });
     else matesForClub(club).forEach(function (star) { push(star, star.club || club, true); });
-    everyStar().forEach(function (star) { push(star, star.home, false); });
     return authors.map(function (row, i) {
         return {
             id: "mate:" + (player.week || 1) + ":" + (row.home || club) + ":" + row.key,
@@ -3271,7 +4003,7 @@ function friendRow(who, added) {
     const row = document.createElement("div");
     row.className = "soc-friend";
     const name = document.createElement("b");
-    name.textContent = (who.flag ? who.flag + " " : "") + (who.name || shown(who)) + (who.pos ? " · " + who.pos : "");
+    name.textContent = (who.flag ? who.flag + " " : "") + (who.name || shown(who)) + (who.pos ? " · " + who.pos : "") + (who.exclusive ? " · EX" : "");
     const unread = added ? unreadFor(who.id) : 0;
     if (unread) {
         const dot = document.createElement("i");
@@ -3415,6 +4147,16 @@ function renderFriends(feed) {
 
 function liveFriend(who) {
     if (!who) return who;
+    const ex = exclusiveById(who.id);
+    if (ex) {
+        who.name = shown(ex);
+        who.flag = ex.flag;
+        who.pos = ex.pos;
+        who.ovr = ex.ovr;
+        who.exclusive = true;
+        who.en = ex.en;
+        return who;
+    }
     const star = everyStar().find(function (row) { return row.id === who.id; });
     if (!star) return who;
     who.name = shown(star);
@@ -3498,6 +4240,8 @@ function talkReply(text, friend, times, before) {
         const asked = /калькулятор|посчитай|сколько будет|calc/.test(low);
         const looks = /^[\d\s.+\-*/()xх×÷,]+$/.test(low) && /\d/.test(low);
         if (asked || looks) return t("socCalc", { n: (socSeed(raw) % 997) + 2 });
+        if (/матч|гол|сч[её]т|игр|match|goal|score/.test(low)) return t("socMessiPitch");
+        if (/привет|здравств|hello|hey|хай/.test(low)) return t("socMessiHi");
         return messiLine(raw);
     }
     if ((times || 1) >= 3) {
@@ -3754,7 +4498,7 @@ function friendSawMatch(info) {
     if (!player.socFriends.length) return;
     if (Date.now() - lastFriendPing < 600000) return;
     const who = player.socFriends[socSeed(score + "|" + (player.week || 1)) % player.socFriends.length];
-    dropFriendNote(who, who.id === "messi" ? messiLine(score) : line);
+    dropFriendNote(who, isMessiFriend(who) ? t("socMessiSaw", { score: score }) : line);
     lastFriendPing = Date.now();
 }
 
@@ -4365,6 +5109,7 @@ function renderAll() {
     updateBallonUI();
     updateEventCal();
     renderBank();
+    updateDrop();
     renderSocial();
     paintUnread();
     maybeCallUp();
@@ -4718,7 +5463,7 @@ function bankBorrow(kind) {
         return;
     }
     const owe = player.loan || 0;
-    if (owe > 0 && player.loanPlan && player.loanPlan !== kind) {
+    if (owe > 0) {
         Sfx.error();
         addLog(t("bankOtherLoan"));
         return;
@@ -4785,9 +5530,25 @@ function bankSeason() {
         const loan = bankLoanType();
         const rate = fixed ? fixed.rate : (loan ? loan.loanRate : 0.18);
         const add = Math.max(1, Math.round(owe * rate));
-        player.loan = owe + add;
         const label = fixed ? t("bankLoan_" + player.loanPlan) : (loan ? t("firm_" + loan.id) : t("bankDebt"));
-        addLog(t("logBankDebt", { n: money(add), plan: label }));
+        let due = add;
+        const fromCash = Math.min(player.respect || 0, due);
+        player.respect = (player.respect || 0) - fromCash;
+        due -= fromCash;
+        const fromBank = Math.min(player.bank || 0, due);
+        player.bank = (player.bank || 0) - fromBank;
+        due -= fromBank;
+        if (player.bank < 1) {
+            player.bank = 0;
+            player.bankPlan = "";
+            player.bankUntil = 0;
+        }
+        if (due > 0) {
+            player.loan = owe + due;
+            addLog(t("logBankDebt", { n: money(due), plan: label }));
+        } else {
+            addLog(t("logBankPaid", { n: money(add), plan: label }));
+        }
     }
 }
 
@@ -6012,6 +6773,10 @@ function releaseStar(star) {
     const index = player.squad.indexOf(star.id);
     if (index < 0) return;
     player.squad.splice(index, 1);
+    if (Array.isArray(player.draftBag)) {
+        player.draftBag = player.draftBag.filter(function (item) { return item.id !== star.id; });
+    }
+    if (player.draftLast && player.draftLast.id === star.id) player.draftLast = null;
     const refund = Math.round(starCost(star.ovr) * 0.4);
     player.respect = (player.respect || 0) + refund;
     const gain = Math.max(1, Math.round((star.ovr - 74) / 5));
@@ -6028,7 +6793,16 @@ function releaseStar(star) {
 
 function squadStars() {
     if (!Array.isArray(player.squad)) return [];
-    return player.squad.map((id) => TRANSFER_STARS.find((s) => s.id === id)).filter(Boolean);
+    return player.squad.map(function (id) { return starCard(id); }).filter(Boolean);
+}
+
+function grantSquad(star) {
+    if (!isClub() || !star || !star.id) return false;
+    if (!Array.isArray(player.squad)) player.squad = [];
+    if (player.squad.indexOf(star.id) >= 0) return false;
+    if (player.squad.length >= SQUAD_XI + SQUAD_BENCH) return false;
+    player.squad.push(star.id);
+    return true;
 }
 
 function onBench() {
@@ -6090,7 +6864,7 @@ function toggleSquadRole(starId) {
     if (!isClub() || !Array.isArray(player.squad) || player.squad.indexOf(starId) < 0) return;
     if (!Array.isArray(player.xiPins)) player.xiPins = [];
     if (!Array.isArray(player.benchPins)) player.benchPins = [];
-    const star = TRANSFER_STARS.find(function (row) { return row.id === starId; });
+    const star = starCard(starId);
     if (!star) return;
     const xi = clubLineup();
     const starting = xi.slots.some(function (slot) { return slot.star && slot.star.id === starId; });
@@ -6143,9 +6917,9 @@ function squadRow(star, onTheBench) {
     row.appendChild(pos);
     const who = document.createElement("span");
     who.className = "who";
-    who.textContent = star.flag + " " + shown(star) + " ";
+    who.textContent = (star.flag ? star.flag + " " : "") + (shown(star) || star.name || "");
     const club = document.createElement("small");
-    club.textContent = star.club + (onTheBench ? " · " + t("benchTag") : "");
+    club.textContent = (star.club || star.home || "") + (onTheBench ? " · " + t("benchTag") : "");
     who.appendChild(club);
     row.appendChild(who);
     const ovn = document.createElement("span");
@@ -6181,6 +6955,24 @@ function updateSquad() {
         if (benchBox) benchBox.hidden = true;
         return;
     }
+    ensureDraft();
+    let draftedIn = false;
+    (player.draftBag || []).forEach(function (item) {
+        const star = starCard(item.id);
+        if (star && grantSquad(star)) draftedIn = true;
+    });
+    if (player.draftLast) {
+        const last = starCard(player.draftLast.id) || player.draftLast;
+        if (last && last.name && grantSquad(last)) draftedIn = true;
+    }
+    if (draftedIn) save();
+    const voucherCount = get("voucherCount");
+    const voucherBuy = get("voucherBuy");
+    if (voucherCount) voucherCount.textContent = t("voucherHave", { n: player.draftTokens });
+    if (voucherBuy) {
+        voucherBuy.textContent = t("voucherBuy", { n: money(VOUCHER_COST) });
+        voucherBuy.disabled = (player.respect || 0) < VOUCHER_COST;
+    }
     const xi = clubLineup();
     const starters = xi.slots.map(function (slot) { return slot.star; }).filter(Boolean);
     const avg = starters.length
@@ -6208,10 +7000,10 @@ function updateSquad() {
         if (slot.star) {
             cell.setAttribute("data-role", slot.star.id);
             const name = document.createElement("b");
-            name.textContent = slot.star.flag + " " + shown(slot.star);
+            name.textContent = (slot.star.flag ? slot.star.flag + " " : "") + (shown(slot.star) || slot.star.name || "");
             cell.appendChild(name);
             const meta = document.createElement("small");
-            meta.textContent = slot.star.pos + " " + slot.star.ovr;
+            meta.textContent = (slot.star.pos || "") + " " + (slot.star.ovr || "");
             cell.appendChild(meta);
         } else {
             cell.textContent = slot.pos;
@@ -6227,15 +7019,16 @@ function updateSquad() {
             chip.className = "bench-chip" + (star.ovr < 78 ? " low" : "");
             chip.setAttribute("data-role", star.id);
             const name = document.createElement("b");
-            name.textContent = star.flag + " " + shown(star);
+            name.textContent = (star.flag ? star.flag + " " : "") + (shown(star) || star.name || "");
             const meta = document.createElement("small");
-            meta.textContent = star.pos + " · " + star.ovr;
+            meta.textContent = (star.pos || "") + " · " + (star.ovr || "");
             chip.appendChild(name);
             chip.appendChild(meta);
             bench.appendChild(chip);
         });
     }
 
+    pitch.hidden = false;
     if (!starters.length && !xi.bench.length) {
         const empty = document.createElement("div");
         empty.className = "market-row";
@@ -6248,13 +7041,73 @@ function updateSquad() {
     xi.bench.forEach(function (star) { box.appendChild(squadRow(star, true)); });
 }
 
+const VOUCHER_COST = 150;
+const DRAFT_SHOP = [
+    { n: 1, cost: 150 },
+    { n: 5, cost: 750 },
+    { n: 10, cost: 1500 }
+];
+
+function buyVouchers(n, cost) {
+    if (!player || !isClub()) return;
+    ensureDraft();
+    if ((player.respect || 0) < cost) return;
+    player.respect -= cost;
+    player.draftTokens += n;
+    save();
+    updateRespect();
+    addLog(t("logVoucher", { n: n, cost: money(cost) }));
+    updateMarket();
+    updateSquad();
+    updateDrop();
+    Sfx.ding();
+}
+
 function updateMarket() {
     const box = get("market");
     const hint = get("marketHint");
+    const posTabs = get("marketPos");
     if (!box) return;
     box.innerHTML = "";
+    if (posTabs) posTabs.hidden = marketFilter === "drafts";
     if (!isClub()) return;
     if (!Array.isArray(player.squad)) player.squad = [];
+    document.querySelectorAll("#marketTabs [data-tier]").forEach((btn) => {
+        btn.classList.toggle("on", btn.getAttribute("data-tier") === marketFilter);
+    });
+    if (marketFilter === "drafts") {
+        ensureDraft();
+        if (hint) hint.textContent = t("draftShop", { n: player.draftTokens, cash: money(player.respect) });
+        DRAFT_SHOP.forEach(function (offer) {
+            const row = document.createElement("div");
+            row.className = "market-row" + ((player.respect || 0) < offer.cost ? " locked" : "");
+            const who = document.createElement("span");
+            who.className = "who";
+            who.textContent = offer.n === 1 ? t("draftPack1") : t("draftPack", { n: offer.n });
+            row.appendChild(who);
+            if ((player.respect || 0) >= offer.cost) {
+                const button = document.createElement("button");
+                button.type = "button";
+                button.setAttribute("data-voucher", String(offer.n));
+                button.setAttribute("data-cost", String(offer.cost));
+                button.textContent = money(offer.cost);
+                row.appendChild(button);
+            } else {
+                const mark = document.createElement("b");
+                mark.textContent = money(offer.cost);
+                row.appendChild(mark);
+            }
+            box.appendChild(row);
+        });
+        const open = document.createElement("button");
+        open.type = "button";
+        open.className = "gold";
+        open.id = "marketDraftOpen";
+        open.textContent = t("draftOpen");
+        open.addEventListener("click", function () { Sfx.click(); openDraft(); });
+        box.appendChild(open);
+        return;
+    }
     const list = TRANSFER_STARS.filter((star) => {
         const tierOk = marketFilter === "all" || star.tier === marketFilter || (marketFilter === "leg" && star.id === "cr7");
         const posOk = marketPos === "all" || star.pos === marketPos;
@@ -6263,9 +7116,6 @@ function updateMarket() {
     if (hint) {
         hint.textContent = t("marketCount", { n: list.length, sq: player.squad.length, cash: money(player.respect) });
     }
-    document.querySelectorAll("#marketTabs [data-tier]").forEach((btn) => {
-        btn.classList.toggle("on", btn.getAttribute("data-tier") === marketFilter);
-    });
     document.querySelectorAll("#marketPos [data-pos]").forEach((btn) => {
         btn.classList.toggle("on", btn.getAttribute("data-pos") === marketPos);
     });
@@ -6501,9 +7351,60 @@ function grantPendingPromo() {
         if (givePromoMoney(true)) localStorage.removeItem(PROMO_PENDING);
     }
 }
+function poolARate() {
+    let n = 6;
+    try {
+        const saved = localStorage.getItem("fc-pool-a");
+        if (saved !== null && saved !== "") n = Number(saved);
+    } catch (e) {}
+    if (!isFinite(n)) n = 6;
+    return Math.max(0, Math.min(100, Math.round(n)));
+}
+function setPoolARate(raw) {
+    const n = Math.max(0, Math.min(100, Math.round(Number(raw))));
+    if (!isFinite(n)) return;
+    try { localStorage.setItem("fc-pool-a", String(n)); } catch (e) {}
+    const input = get("adminPoolA");
+    if (input) input.value = String(n);
+    const note = get("adminNote");
+    if (note) note.textContent = t("adminPoolASet", { n: n });
+}
+function adminOn() {
+    try { return localStorage.getItem("fc-admin") === "1"; } catch (e) { return false; }
+}
+function paintAdmin() {
+    const lock = get("adminLock");
+    const tools = get("adminTools");
+    const on = adminOn();
+    if (lock) lock.hidden = on;
+    if (tools) tools.hidden = !on;
+    const rate = get("adminPoolA");
+    if (rate && document.activeElement !== rate) rate.value = String(poolARate());
+}
+function tryAdminCode() {
+    const el = get("adminCode");
+    const raw = el ? el.value : "";
+    if (promoNorm(raw).replace(/\./g, "") === "CRIS7") {
+        if (el) el.value = "";
+        unlockAdmin();
+        return;
+    }
+    const note = get("adminNote");
+    if (note) note.textContent = t("promoBad");
+}
+function unlockAdmin() {
+    try { localStorage.setItem("fc-admin", "1"); } catch (e) {}
+    paintAdmin();
+    setPromoHints(t("adminCode"));
+    Sfx.ding();
+}
 function tryPromo(raw) {
     Sfx.unlock();
     Sfx.click();
+    if (promoNorm(raw).replace(/\./g, "") === "CRIS7") {
+        unlockAdmin();
+        return;
+    }
     if (!promoOk(raw)) {
         Sfx.error();
         setPromoHints(t("promoBad"));
@@ -6877,6 +7778,11 @@ function bind() {
     const sponsorList = get("sponsorList");
     if (sponsorList) {
         sponsorList.addEventListener("click", function (event) {
+            const drop = event.target.closest("[data-drop]");
+            if (drop) {
+                dropSponsor(drop.getAttribute("data-drop"));
+                return;
+            }
             const btn = event.target.closest("[data-deal]");
             if (!btn || btn.disabled) return;
             signSponsor(btn.getAttribute("data-deal"));
@@ -7009,6 +7915,12 @@ function bind() {
     const marketBox = get("market");
     if (marketBox) {
         marketBox.addEventListener("click", function (event) {
+            const voucher = event.target.closest("[data-voucher]");
+            if (voucher) {
+                Sfx.click();
+                buyVouchers(Number(voucher.getAttribute("data-voucher")), Number(voucher.getAttribute("data-cost")));
+                return;
+            }
             const btn = event.target.closest("[data-star]");
             if (!btn) return;
             const star = TRANSFER_STARS.find((s) => s.id === btn.getAttribute("data-star"));
@@ -7023,7 +7935,7 @@ function bind() {
         squadCard.addEventListener("click", function (event) {
             const sell = event.target.closest("[data-sell]");
             if (sell) {
-                const star = TRANSFER_STARS.find((s) => s.id === sell.getAttribute("data-sell"));
+                const star = starCard(sell.getAttribute("data-sell"));
                 if (star) {
                     Sfx.click();
                     releaseStar(star);
@@ -7129,6 +8041,25 @@ document.addEventListener("DOMContentLoaded", function () {
             stylePanel.hidden = !stylePanel.hidden;
         });
         stylePanel.addEventListener("click", function (event) {
+            if (event.target.closest(".admin-box")) event.stopPropagation();
+            if (event.target.id === "adminCodeBtn") {
+                Sfx.click();
+                tryAdminCode();
+                return;
+            }
+            if (event.target.id === "adminPoolABtn") {
+                event.stopPropagation();
+                Sfx.click();
+                setPoolARate(get("adminPoolA") ? get("adminPoolA").value : "");
+                return;
+            }
+            const admin = event.target.closest("[data-admin]");
+            if (admin) {
+                event.stopPropagation();
+                Sfx.click();
+                runAdmin(admin.getAttribute("data-admin"));
+                return;
+            }
             const btn = event.target.closest("[data-style]");
             if (!btn) return;
             event.stopPropagation();
@@ -7136,9 +8067,35 @@ document.addEventListener("DOMContentLoaded", function () {
             applyStyle(btn.getAttribute("data-style"));
             stylePanel.hidden = true;
         });
+        const draftOpen = get("draftOpen");
+        const draftClose = get("draftClose");
+        if (draftOpen) draftOpen.addEventListener("click", function () { Sfx.click(); openDraft(); });
+        const voucherBuy = get("voucherBuy");
+        if (voucherBuy) voucherBuy.addEventListener("click", function () {
+            Sfx.click();
+            buyVouchers(1, VOUCHER_COST);
+        });
+        if (draftClose) draftClose.addEventListener("click", function () { Sfx.click(); closeDraft(); });
+        const pullReveal = get("pullReveal");
+        const pullOk = get("pullOk");
+        if (pullReveal) pullReveal.addEventListener("click", function (event) {
+            if (event.target === pullReveal || event.target === pullOk) hidePull();
+        });
+        if (pullOk) pullOk.addEventListener("click", function () { Sfx.click(); hidePull(); });
         document.addEventListener("click", function () { stylePanel.hidden = true; });
     }
     syncMuteButton();
+    paintAdmin();
+    const poolInput = get("adminPoolA");
+    if (poolInput) {
+        poolInput.addEventListener("keydown", function (event) {
+            if (event.key !== "Enter") return;
+            event.preventDefault();
+            setPoolARate(poolInput.value);
+        });
+    }
+    paintLive();
+    setInterval(paintLive, 1000);
     renderRecords();
     loadAuction();
     load();

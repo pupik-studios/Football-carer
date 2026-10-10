@@ -39,7 +39,7 @@
       #studioSplash .studio-tap{margin:28px 0 0;letter-spacing:.34em;text-transform:uppercase;font-size:11px;font-weight:800;color:#d4af37}
       #studioSplash .studio-line{width:min(220px,46vw);height:1px;margin:10px 0 6px;background:linear-gradient(90deg,transparent,#d4af37,transparent)}
     </style>
-    <link rel="stylesheet" href="style.css?v=93">
+    <link rel="stylesheet" href="style.css?v=115">
 </head>
 <body>
 
@@ -55,6 +55,25 @@
         <button type="button" data-style="plain" data-i18n="stylePlain">Обычный</button>
         <button type="button" data-style="arcade" data-i18n="styleArcade">Аркада</button>
         <button type="button" data-style="board" data-i18n="styleBoard">Табло</button>
+        <div class="admin-box">
+            <p data-i18n="adminTitle">Админ</p>
+            <div class="admin-code" id="adminLock">
+                <input id="adminCode" maxlength="12" placeholder="код" autocomplete="off" autocapitalize="characters" spellcheck="false">
+                <button type="button" id="adminCodeBtn">ОК</button>
+            </div>
+            <div id="adminTools" hidden>
+                <button type="button" data-admin="day" data-i18n="adminDay">+1 день</button>
+                <button type="button" data-admin="skip" data-i18n="adminSkip">+4 дня</button>
+                <button type="button" data-admin="money" data-i18n="adminMoney">+$10 000</button>
+                <button type="button" data-admin="draft" data-i18n="adminDraft">+1 драфт</button>
+                <div class="admin-code">
+                    <span data-i18n="adminPoolA">Пул A %</span>
+                    <input id="adminPoolA" type="number" min="0" max="100" step="1" value="6" inputmode="numeric">
+                    <button type="button" id="adminPoolABtn">ОК</button>
+                </div>
+            </div>
+            <p class="hint" id="adminNote"></p>
+        </div>
     </div>
 </div>
 
@@ -142,6 +161,30 @@
             <p id="socialDetailPost"></p>
             <div id="socialDetailList"></div>
         </div>
+    </div>
+</div>
+
+<div id="pullReveal" class="pull-reveal" hidden>
+    <div class="pull-intro" id="pullIntro" hidden>
+        <p id="pullIntroText"></p>
+    </div>
+    <div class="pull-card">
+        <p class="k" id="pullKicker">ВЫПАЛ</p>
+        <p class="pool" id="pullPool"></p>
+        <p class="ovr" id="pullOvr"></p>
+        <p class="name" id="pullName"></p>
+        <p class="meta" id="pullMeta"></p>
+        <button type="button" id="pullOk">ОК</button>
+    </div>
+</div>
+
+<div id="draftOverlay" class="cal-overlay" hidden>
+    <div class="cal-window draft-window">
+        <p class="cal-kicker" id="draftKicker">ДРАФТ</p>
+        <h2 id="draftTitle">Драфт</h2>
+        <p class="hint" id="draftHint"></p>
+        <div class="draft-picks" id="draftPicks"></div>
+        <button type="button" id="draftClose" class="back-btn" data-i18n="calClose">Закрыть</button>
     </div>
 </div>
 
@@ -298,6 +341,17 @@
             <b id="energyDisplay">100</b>
         </div>
     </div>
+    <div class="live-upd" id="liveUpd">
+        <div class="live-top">
+            <span id="liveKicker">ОБНОВЛЕНИЕ</span>
+            <em id="liveLeft">4д 00:00:00</em>
+        </div>
+        <b id="liveTitle">Last Dance</b>
+        <small id="liveText"></small>
+        <p class="live-only" id="liveOnly">Эксклюзивные карты только эти 4 дня</p>
+        <div class="live-cards" id="liveCards"></div>
+    </div>
+
     <div class="hook" id="hookBar">
         <span id="hookKicker">LIVE</span>
         <b id="hookText">Ещё один матч — и ты ближе к топу</b>
@@ -313,6 +367,14 @@
     </nav>
 
     <div class="panel on" data-panel="home">
+    <div class="card drop-card" id="dropCard">
+        <p class="drop-kicker" id="dropKicker">ОБНОВЛЕНИЕ</p>
+        <h2 id="dropTitle">Лучшие связки</h2>
+        <p class="hint" id="dropText"></p>
+        <div class="live-cards" id="dropCards"></div>
+        <p class="hint" id="dropNext"></p>
+        <button type="button" id="draftOpen" class="gold" data-i18n="draftOpen">Открыть драфт</button>
+    </div>
     <div class="card" id="bodyCard">
         <h2 data-i18n="body">Тело</h2>
         <p class="hint" id="bodyMapHint">Цел. Травма подсветит зону.</p>
@@ -382,7 +444,7 @@
         <div class="fixture" id="fixtureBox">
             <small id="fixtureLabel">Следующий матч</small>
             <b id="fixtureNext">Неделя 2</b>
-            <p id="fixtureHint">Матч раз в 2 недели. Ничья → серия пенальти.</p>
+            <p id="fixtureHint">Матч раз в 2 недели. Ничья остаётся ничьей.</p>
         </div>
         <div class="plan-row" id="planRow">
             <button type="button" data-plan="attack" data-i18n="plan_attack">Атака</button>
@@ -435,6 +497,10 @@
     <div class="panel" data-panel="club">
     <div class="card" id="squadCard" hidden>
         <h2 data-i18n="squad">Состав</h2>
+        <div class="voucher-bar" id="voucherBar">
+            <b id="voucherCount">Ваучеры: 0</b>
+            <button type="button" id="voucherBuy">Купить · $150</button>
+        </div>
         <p class="hint" id="squadHint" data-i18n="squadHint">Своих игроков пока нет. Купи в трансферном окне.</p>
         <div class="pitch" id="squadPitch"></div>
         <div class="bench-box" id="benchBox" hidden>
@@ -453,6 +519,7 @@
             <button type="button" data-tier="rpl" data-i18n="rpl">РПЛ</button>
             <button type="button" data-tier="eu" data-i18n="europe">Европа</button>
             <button type="button" data-tier="leg" data-i18n="legends">Легенды</button>
+            <button type="button" data-tier="drafts" data-i18n="marketDrafts">Драфты</button>
         </div>
         <div class="pos-tabs" id="marketPos">
             <button type="button" data-pos="all" class="on" data-i18n="all">Все</button>
@@ -613,8 +680,8 @@
     </div>
 </div>
 
-<script src="audio.js?v=93" defer></script>
-<script src="loc.js?v=93" defer></script>
-<script src="game.js?v=93" defer></script>
+<script src="audio.js?v=115" defer></script>
+<script src="loc.js?v=115" defer></script>
+<script src="game.js?v=115" defer></script>
 </body>
 </html>
