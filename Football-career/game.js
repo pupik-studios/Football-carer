@@ -1001,8 +1001,8 @@ function makeGrid(fromWeek, count) {
             lastNat = opp;
         } else {
             opp = pool[i % pool.length];
-            if (opp === last) opp = pool[(i + 1) % pool.length];
-            last = opp;
+        if (opp === last) opp = pool[(i + 1) % pool.length];
+        last = opp;
         }
         rows.push({
             week: week,
@@ -2188,6 +2188,7 @@ function dropNow() {
 
 const PITY_A = 25;
 const PITY_B = 10;
+const DRAFT_SPIN_COST = 100;
 const PHASE_PAY = { A: 8, B: 3, C: 1 };
 
 function ensureDraft() {
@@ -2225,6 +2226,7 @@ function updateDrop() {
     const club = !!(player && player.name && isClub());
     if (card) card.hidden = !club;
     if (!club) {
+        closeDraft();
         paintLive();
         return;
     }
@@ -2334,6 +2336,10 @@ function liveClock() {
 
 let liveMark = "";
 function paintLive() {
+    const bar = get("liveUpd");
+    const club = !!(player && player.name && isClub());
+    if (bar) bar.hidden = !club;
+    if (!club) return;
     const now = dropNow();
     const title = get("liveTitle");
     const text = get("liveText");
@@ -2345,7 +2351,6 @@ function paintLive() {
     if (left) left.textContent = liveClock();
     const only = get("liveOnly");
     if (only) only.textContent = now.drop.tone === "rainbow" ? t("liveOnlyLong") : t("liveOnly");
-    const bar = get("liveUpd");
     if (bar) bar.className = "live-upd tone-" + (now.drop.tone || "dusk");
     paintExclusiveCards(get("liveCards"));
     const mark = now.drop.id + ":" + now.n;
@@ -2364,6 +2369,167 @@ function openDraft() {
 function closeDraft() {
     const box = get("draftOverlay");
     if (box) box.hidden = true;
+}
+
+function ensureTale() {
+    if (!player) return;
+    if (!player.tale || typeof player.tale.step !== "number") player.tale = { step: 0, tone: "" };
+}
+
+function taleBeats() {
+    return [
+        {
+            id: "arrive",
+            title: "tale1t",
+            text: function () { return t("tale1"); },
+            ready: function () { return true; },
+            picks: [
+                { id: "a", label: "tale1a", log: "tale1alog", fame: 2, stat: "passing", tone: "team" },
+                { id: "b", label: "tale1b", log: "tale1blog", fame: -1, stat: "shooting", cash: 80, tone: "star" },
+                { id: "c", label: "tale1c", log: "tale1clog", fame: 1, stat: "defending", tone: "quiet" },
+                { id: "d", label: "tale1d", log: "tale1dlog", fame: 3, cash: -20, stat: "physical", tone: "loud" }
+            ]
+        },
+        {
+            id: "column",
+            title: "tale2t",
+            text: function () { return t(player.tale.tone === "star" || player.tale.tone === "loud" ? "tale2star" : "tale2team"); },
+            ready: function () { return (player.matches || 0) >= 1; },
+            picks: [
+                { id: "a", label: "tale2a", log: "tale2alog", fame: 1, cash: 60 },
+                { id: "b", label: "tale2b", log: "tale2blog", fame: 3, cash: -30 },
+                { id: "c", label: "tale2c", log: "tale2clog", fame: 2, cash: 20 },
+                { id: "d", label: "tale2d", log: "tale2dlog", stat: "pace" }
+            ]
+        },
+        {
+            id: "mic",
+            title: "tale3t",
+            text: function () { return t("tale3"); },
+            ready: function () { return (player.week || 1) >= 6; },
+            picks: [
+                { id: "a", label: "tale3a", log: "tale3alog", fame: 2, cash: 150 },
+                { id: "b", label: "tale3b", log: "tale3blog", fame: 1, stat: "physical", statN: 2 },
+                { id: "c", label: "tale3c", log: "tale3clog", fame: 2, stat: "passing", cash: 40 },
+                { id: "d", label: "tale3d", log: "tale3dlog", fame: -1, stat: "shooting", cash: 30 }
+            ]
+        }
+    ];
+}
+
+function currentTale() {
+    ensureTale();
+    const beats = taleBeats();
+    const beat = beats[player.tale.step];
+    if (!beat || !beat.ready()) return null;
+    return beat;
+}
+
+function taleStat(key, n) {
+    if (!player.stats) return;
+    if (typeof player.stats[key] !== "number") {
+        const keys = statKeys();
+        key = keys[0];
+    }
+    if (typeof player.stats[key] !== "number") return;
+    player.stats[key] = Math.min(99, player.stats[key] + (n || 1));
+}
+
+let taleAuto = "";
+
+function closeTale() {
+    const box = get("taleOverlay");
+    if (box) box.hidden = true;
+}
+
+function openTale() {
+    const beat = currentTale();
+    const box = get("taleOverlay");
+    if (!beat || !box) return;
+    const kicker = get("taleKicker");
+    const title = get("taleTitle");
+    const text = get("taleText");
+    const acts = get("taleActs");
+    const later = get("taleLater");
+    if (kicker) kicker.textContent = t("taleKicker");
+    if (title) title.textContent = t(beat.title);
+    if (text) text.textContent = beat.text();
+    if (acts) {
+        acts.textContent = "";
+        (beat.picks || []).forEach(function (pick) {
+            const btn = document.createElement("button");
+            btn.type = "button";
+            btn.setAttribute("data-pick", pick.id);
+            btn.textContent = t(pick.label);
+            acts.appendChild(btn);
+        });
+    }
+    if (later) later.textContent = t("taleLater");
+    taleAuto = beat.id;
+    box.hidden = false;
+}
+
+function pickTale(side) {
+    const beat = currentTale();
+    const pick = beat.picks && beat.picks.find(function (row) { return row.id === side; });
+    if (!pick) return;
+    if (pick.cash) player.respect = Math.max(0, (player.respect || 0) + pick.cash);
+    if (pick.fame) addFame(pick.fame);
+    if (pick.stat) taleStat(pick.stat, pick.statN || 1);
+    if (pick.tone) player.tale.tone = pick.tone;
+    player.tale.step += 1;
+    addLog(t(pick.log));
+    closeTale();
+    save();
+    updateRespect();
+    updateFame();
+    updateStats();
+    paintTale();
+    Sfx.ding();
+}
+
+function paintTale() {
+    const card = get("taleCard");
+    if (!card) return;
+    const on = !!(player && player.name);
+    card.hidden = !on;
+    if (!on) return;
+    ensureTale();
+    const beat = currentTale();
+    const open = get("taleOpen");
+    const title = get("taleCardTitle");
+    const text = get("taleCardText");
+    if (beat) {
+        if (title) title.textContent = t(beat.title);
+        if (text) text.textContent = beat.text();
+        if (open) {
+            open.hidden = false;
+            open.textContent = t("taleOpen");
+        }
+    } else {
+        if (open) open.hidden = true;
+        if (player.tale.step >= taleBeats().length) {
+            if (title) title.textContent = t("taleEndT");
+            if (text) text.textContent = t("taleEnd");
+        } else {
+            if (title) title.textContent = t("taleWho");
+            if (text) text.textContent = t((player.matches || 0) < 1 ? "taleWait" : "taleWaitLate");
+        }
+    }
+    const box = get("taleOverlay");
+    if (box && !box.hidden) openTale();
+}
+
+function maybeTale() {
+    const screen = get("careerScreen");
+    if (!screen || screen.style.display === "none") return;
+    const beat = currentTale();
+    if (!beat || taleAuto === beat.id) return;
+    const box = get("taleOverlay");
+    if (!box || !box.hidden) return;
+    const draft = get("draftOverlay");
+    if (draft && !draft.hidden) return;
+    openTale();
 }
 
 function personKey(star) {
@@ -2415,26 +2581,29 @@ function spinDraft() {
         renderDraft();
         return;
     }
+    if ((player.respect || 0) < DRAFT_SPIN_COST) {
+        player.draftNote = t("draftCostNeed", { n: money(DRAFT_SPIN_COST) });
+        renderDraft();
+        return;
+    }
     const pools = draftPools();
-    player.draftTokens -= 1;
-    player.draftPityA -= 1;
-    player.draftPityB -= 1;
+    const pityA = player.draftPityA - 1;
+    const pityB = player.draftPityB - 1;
     const roll = Math.random();
     let pool = "C";
-    if (player.draftPityA <= 0 || roll < poolARate() / 100) pool = "A";
-    else if (player.draftPityB <= 0 || roll < 0.28) pool = "B";
+    if (pityA <= 0 || roll < 0.06) pool = "A";
+    else if (pityB <= 0 || roll < 0.28) pool = "B";
     if (!pools[pool].length) pool = pools.B.length ? "B" : "C";
-    if (pool === "A") {
-        player.draftPityA = PITY_A;
-        player.draftPityB = PITY_B;
-    } else if (pool === "B") player.draftPityB = PITY_B;
     const ready = (pools[pool] || []).filter(function (row) { return row && row.id && row.name && row.ovr; });
     if (!ready.length) {
-        player.draftTokens += 1;
         player.draftNote = t("draftNeed", { n: dropNow().days });
         renderDraft();
         return;
     }
+    player.draftTokens -= 1;
+    player.draftPityA = pool === "A" ? PITY_A : pityA;
+    player.draftPityB = pool === "A" || pool === "B" ? PITY_B : pityB;
+    player.respect = (player.respect || 0) - DRAFT_SPIN_COST;
     const star = ready[Math.floor(Math.random() * ready.length)];
     player.draftBag.unshift({ uid: Date.now() + "-" + Math.floor(Math.random() * 999), id: star.id, pool: pool });
     if (player.draftBag.length > 12) player.draftBag.length = 12;
@@ -2454,6 +2623,7 @@ function spinDraft() {
     addLog(player.draftNote);
     showPull(player.draftLast);
     updateSquad();
+    updateRespect();
     save();
     updateDrop();
     renderDraft();
@@ -2726,7 +2896,7 @@ function renderDraft() {
     const spin = document.createElement("button");
     spin.type = "button";
     spin.className = "gold";
-    spin.textContent = t("draftSpin");
+    spin.textContent = t("draftSpin", { n: money(DRAFT_SPIN_COST) });
     spin.addEventListener("click", function () { Sfx.click(); spinDraft(); });
     picks.appendChild(spin);
     const phase = document.createElement("p");
@@ -2780,34 +2950,6 @@ function renderDraft() {
             picks.appendChild(line);
         });
     }
-}
-
-function runAdmin(kind) {
-    const note = get("adminNote");
-    if (kind === "day") {
-        shiftClock(86400000);
-        if (note) note.textContent = t("adminTime");
-    } else if (kind === "skip") {
-        shiftClock(DROP_MS);
-        if (note) note.textContent = t("adminTime");
-    } else if (!player || !player.name) {
-        if (note) note.textContent = t("adminNoCareer");
-        return;
-    } else if (kind === "money") {
-        player.respect = (player.respect || 0) + 10000;
-        save();
-        updateRespect();
-        if (note) note.textContent = t("adminCash");
-        addLog(t("adminCash"));
-    } else if (kind === "draft") {
-        ensureDraft();
-        player.draftTokens += 1;
-        save();
-        if (note) note.textContent = t("adminTok");
-        addLog(t("adminTok"));
-    }
-    updateDrop();
-    if (get("draftOverlay") && !get("draftOverlay").hidden) renderDraft();
 }
 
 function updateHook() {
@@ -3113,6 +3255,7 @@ function load() {
         if (!player.avatar) {
             player.avatar = player.mode === "club" ? "🏟️" : (AVATARS[player.position] || "⚽");
         }
+        if (!player.tale || typeof player.tale.step !== "number") player.tale = { step: 0, tone: "" };
         if (!Array.isArray(player.squad)) player.squad = [];
         if (!Array.isArray(player.grid)) player.grid = [];
         migrateGkStats(player);
@@ -5110,6 +5253,8 @@ function renderAll() {
     updateEventCal();
     renderBank();
     updateDrop();
+    paintTale();
+    maybeTale();
     renderSocial();
     paintUnread();
     maybeCallUp();
@@ -5961,11 +6106,140 @@ function updateOnlineUI() {
     }
 }
 
+let pvpPoll = 0;
+
+function pvpSession() {
+    try {
+        const name = localStorage.getItem("fc-pvp-name") || "";
+        const pin = localStorage.getItem("fc-pvp-pin") || "";
+        if (name && pin) return { name: name, pin: pin };
+    } catch (err) {}
+    return null;
+}
+
+function stopPvpPoll() {
+    if (pvpPoll) {
+        clearInterval(pvpPoll);
+        pvpPoll = 0;
+    }
+}
+
+function pvpLeave() {
+    stopPvpPoll();
+    const session = pvpSession();
+    if (!session) return;
+    fetch("/api/leave", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(session)
+    }).catch(function () {});
+}
+
+function paintPvpGate() {
+    const reg = get("pvpReg");
+    const wait = get("pvpWait");
+    const session = pvpSession();
+    if (reg) reg.hidden = !!session;
+    if (wait) wait.hidden = !session;
+    const hint = get("pvpRegHint");
+    const name = get("pvpName");
+    const pin = get("pvpPin");
+    const enter = get("pvpRegBtn");
+    const hello = get("pvpWaitText");
+    const queueBtn = get("pvpQueueBtn");
+    const botBtn = get("pvpBotBtn");
+    if (hint) hint.textContent = t("pvpRegHint");
+    if (name) name.placeholder = t("pvpName");
+    if (pin) pin.placeholder = t("pvpPin");
+    if (enter) enter.textContent = t("pvpEnter");
+    if (hello && session) hello.textContent = t("pvpHello", { name: session.name });
+    if (queueBtn) queueBtn.textContent = t("pvpQueue");
+    if (botBtn) botBtn.textContent = t("pvpBot");
+}
+
+function pvpEnter() {
+    const nameEl = get("pvpName");
+    const pinEl = get("pvpPin");
+    const name = nameEl ? nameEl.value.trim() : "";
+    const pin = pinEl ? pinEl.value : "";
+    if (name.length < 2 || pin.length < 4) {
+        Sfx.error();
+        get("battleSub").textContent = t("pvpBad");
+        return;
+    }
+    fetch("/api/enter", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: name, pin: pin })
+    }).then(function (res) {
+        if (res.status === 403) {
+            Sfx.error();
+            get("battleSub").textContent = t("pvpWrong");
+            return null;
+        }
+        if (!res.ok) {
+            Sfx.error();
+            get("battleSub").textContent = t("pvpBad");
+            return null;
+        }
+        return res.json();
+    }).then(function (data) {
+        if (!data || !data.ok) return;
+        localStorage.setItem("fc-pvp-name", data.name || name);
+        localStorage.setItem("fc-pvp-pin", pin);
+        paintPvpGate();
+        get("battleSub").textContent = t("pvpHello", { name: data.name || name });
+        Sfx.ding();
+    }).catch(function () {
+        Sfx.error();
+        get("battleSub").textContent = t("pvpOff");
+    });
+}
+
+function pvpQueue() {
+    const session = pvpSession();
+    if (!session) return;
+    const card = myBattleCard();
+    card.pvp = true;
+    fetch("/api/queue", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: session.name, pin: session.pin, card: card })
+    }).then(function (res) {
+        if (!res.ok) throw new Error("queue");
+        return res.json();
+    }).then(function () {
+        get("battleTitle").textContent = t("search");
+        get("battleSub").textContent = t("pvpWait");
+        stopPvpPoll();
+        pvpPoll = setInterval(pvpPollTick, 1200);
+    }).catch(function () {
+        Sfx.error();
+        get("battleSub").textContent = t("pvpOff");
+    });
+}
+
+function pvpPollTick() {
+    const session = pvpSession();
+    const overlay = get("battleOverlay");
+    if (!session || !overlay || overlay.hidden) {
+        stopPvpPoll();
+        return;
+    }
+    const q = "name=" + encodeURIComponent(session.name) + "&pin=" + encodeURIComponent(session.pin);
+    fetch("/api/poll?" + q).then(function (res) { return res.json(); }).then(function (data) {
+        if (!data || data.state !== "found" || !data.rival) return;
+        stopPvpPoll();
+        showOnlineFound(data.rival);
+    }).catch(function () {});
+}
+
 function closeOnlineLobby() {
     if (onlineTimer) {
         clearTimeout(onlineTimer);
         onlineTimer = null;
     }
+    pvpLeave();
     onlineRival = null;
     const overlay = get("battleOverlay");
     if (overlay) overlay.hidden = true;
@@ -6018,8 +6292,8 @@ function openOnlineLobby() {
     get("battleKicker").textContent = t("arena");
     get("battleTitle").textContent = t("search");
     get("battleSub").textContent = t("scan");
+    paintPvpGate();
     Sfx.ding();
-    startOnlineSearch();
 }
 
 function startOnlineSearch() {
@@ -6056,14 +6330,13 @@ function showOnlineFound(rival) {
     if (go) go.hidden = false;
     if (box) box.hidden = true;
     get("battleTitle").textContent = t("foundRival");
-    get("battleSub").textContent = rival.live
-        ? t("friendCard", { o: rival.o })
-        : t("pingOvr", { ping: rival.ping, o: rival.o });
+    get("battleSub").textContent = rival.pvp
+        ? t("pvpTag")
+        : rival.live
+            ? t("friendCard", { o: rival.o })
+            : t("pingOvr", { ping: rival.ping, o: rival.o });
     Sfx.ding();
     if (onlineTimer) clearTimeout(onlineTimer);
-    onlineTimer = setTimeout(function () {
-        if (!get("battleOverlay").hidden && onlineRival) playOnline();
-    }, 900);
 }
 
 function joinOnlineCode() {
@@ -6135,7 +6408,7 @@ function playOnline() {
     const me = myBattleCard();
     const delta = clamp((me.o - rival.o) / 18 + (me.f - (rival.f || 50)) / 160, -0.95, 1.15);
 
-    showAura("match", t("onlineMs", { n: rival.ping }), t("battleWord"), ui(me.n) + " vs " + ui(rival.n), "#a78bfa", 1000);
+    showAura("match", "0'", "0:0", ui(me.n) + " vs " + ui(rival.n), "#a78bfa", 900);
     Sfx.matchKickoff();
 
     let scored = Math.max(0, Math.round(1.25 + delta * 1.45 + Math.random() * 1.4 - 0.35));
@@ -6162,9 +6435,15 @@ function playOnline() {
     const fameGain = result === "win" ? (pen ? 5 : 4) : (pen ? 0 : -1);
     const fameDelta = addFame(fameGain);
     const score = scored + ":" + conceded;
+    const marks = pvpMarks(scored, conceded);
+    marks.forEach(function (row, i) {
+        setTimeout(function () {
+            showAura("match", row.min + "'", row.score, ui(me.n) + " vs " + ui(rival.n), "#a78bfa", 900);
+        }, 700 * (i + 1));
+    });
     const summary = "🌐 " + score + " vs " + ui(rival.n) +
         (pen ? " · " + t("pensShort") + " " + pen.us + ":" + pen.them : "") +
-        (rival.live ? " · " + t("codeTag") : "");
+        (rival.pvp ? " · " + t("pvpTag") : (rival.live ? " · " + t("codeTag") : ""));
 
     setTimeout(function () {
         const last = get("lastMatch");
@@ -6207,7 +6486,29 @@ function playOnline() {
         startRestTicker();
         renderAll();
         save();
-    }, 1000);
+    }, 700 * (marks.length + 1) + 500);
+}
+
+function pvpMarks(scored, conceded) {
+    const events = [];
+    let i;
+    for (i = 0; i < scored; i++) events.push("us");
+    for (i = 0; i < conceded; i++) events.push("them");
+    for (i = events.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        const tmp = events[i];
+        events[i] = events[j];
+        events[j] = tmp;
+    }
+    const mins = [14, 28, 43, 57, 71, 84];
+    let us = 0;
+    let them = 0;
+    if (!events.length) return [{ min: 90, score: "0:0" }];
+    return events.map(function (side, index) {
+        if (side === "us") us += 1;
+        else them += 1;
+        return { min: mins[index] || 88, score: us + ":" + them };
+    });
 }
 
 function startOnlineFromMenu() {
@@ -6630,23 +6931,26 @@ function transferTo(club) {
     const steps = list.filter(function (row) {
         return row.required > fromReq && row.required <= club.required;
     });
-    const bonus = stepBonus(club);
+    const path = steps.length ? steps : [club];
+    const bonus = path.reduce(function (sum, row) { return sum + stepBonus(row); }, 0);
     player.club = club.name;
     player.respect = (player.respect || 0) + bonus;
     const peak = isClub() ? club.name === "Финал ЛЧ" : club.name === "Real Madrid";
+    path.forEach(function (row) {
+        const top = isClub() ? row.name === "Финал ЛЧ" : row.name === "Real Madrid";
+        addTitle(top ? (isClub() ? "ucl" : "club") : (isClub() ? "league" : "club"), seasonYear(), row.name);
+    });
     if (peak) {
         Sfx.champ();
         addLog(isClub() ? t("logPeakClub") : t("logPeakPlayer"), "goal");
-        addTitle(isClub() ? "ucl" : "club", seasonYear(), club.name);
         showAura("champ", "+" + money(bonus), ui(club.name), isClub() ? t("peakClubSub") : t("welcome", { city: ui(club.city) }), club.accent, 2800);
     } else {
         Sfx.transferBig(club.required);
         addLog(isClub() ? t("logPromote", { name: ui(club.name) }) : t("logTransfer", { name: ui(club.name), city: ui(club.city) }));
-        addTitle(isClub() ? "league" : "club", seasonYear(), club.name);
         showAura("transfer", "+" + money(bonus), ui(club.name), isClub() ? t("newLeague", { league: ui(club.league) }) : t("welcome", { city: ui(club.city) }), club.color, 2400);
     }
-    if (steps.length > 1) {
-        addLog(t(isClub() ? "logJumpLeague" : "logJump", { n: steps.length, pay: money(bonus) }));
+    if (path.length > 1) {
+        addLog(t(isClub() ? "logJumpLeague" : "logJump", { n: path.length, pay: money(bonus) }));
     }
     addLog(t("logCash", { pay: money(bonus), total: money(player.respect) }));
     const fameDelta = addFame(6);
@@ -6833,20 +7137,20 @@ function lineupOf(stars) {
     });
     function claim(pool, slot, minFit, minOvr) {
         if (slot.star) return;
-        let pick = null;
+            let pick = null;
         let best = -1;
         pool.forEach(function (star) {
             if (taken[star.id] || benchSet[star.id] || star.ovr < minOvr) return;
             const fit = slotScore(slot.pos, star.pos);
             if (fit < minFit) return;
             const score = star.ovr + (fit === 2 ? 6 : 0);
-            if (score > best) {
-                best = score;
-                pick = star;
-            }
-        });
+                if (score > best) {
+                    best = score;
+                    pick = star;
+                }
+            });
         if (!pick) return;
-        taken[pick.id] = true;
+                taken[pick.id] = true;
         slot.star = pick;
     }
     const pinned = stars.filter(function (star) { return pinSet[star.id]; });
@@ -6873,7 +7177,7 @@ function toggleSquadRole(starId) {
     if (starting) {
         player.benchPins.push(starId);
         addLog(t("logToBench", { name: shown(star) }));
-    } else {
+            } else {
         const slot = xi.slots.slice().sort(function (a, b) {
             return slotScore(b.pos, star.pos) - slotScore(a.pos, star.pos);
         }).find(function (row) { return slotScore(row.pos, star.pos) >= 1 && !row.star; })
@@ -6909,35 +7213,35 @@ function slotScore(slotPos, playerPos) {
 }
 
 function squadRow(star, onTheBench) {
-    const row = document.createElement("div");
+        const row = document.createElement("div");
     row.className = "market-row owned" + (onTheBench ? " bench-row" : "");
-    const pos = document.createElement("span");
-    pos.className = "pos";
-    pos.textContent = star.pos;
-    row.appendChild(pos);
-    const who = document.createElement("span");
-    who.className = "who";
+        const pos = document.createElement("span");
+        pos.className = "pos";
+        pos.textContent = star.pos;
+        row.appendChild(pos);
+        const who = document.createElement("span");
+        who.className = "who";
     who.textContent = (star.flag ? star.flag + " " : "") + (shown(star) || star.name || "");
-    const club = document.createElement("small");
+        const club = document.createElement("small");
     club.textContent = (star.club || star.home || "") + (onTheBench ? " · " + t("benchTag") : "");
-    who.appendChild(club);
-    row.appendChild(who);
-    const ovn = document.createElement("span");
-    ovn.className = "ovn";
-    ovn.textContent = String(star.ovr);
-    row.appendChild(ovn);
+        who.appendChild(club);
+        row.appendChild(who);
+        const ovn = document.createElement("span");
+        ovn.className = "ovn";
+        ovn.textContent = String(star.ovr);
+        row.appendChild(ovn);
     const role = document.createElement("button");
     role.type = "button";
     role.className = "role";
     role.setAttribute("data-role", star.id);
     role.textContent = onTheBench ? t("toXi") : t("toBench");
     row.appendChild(role);
-    const sell = document.createElement("button");
-    sell.type = "button";
-    sell.className = "sell";
-    sell.setAttribute("data-sell", star.id);
+        const sell = document.createElement("button");
+        sell.type = "button";
+        sell.className = "sell";
+        sell.setAttribute("data-sell", star.id);
     sell.textContent = t("sell");
-    row.appendChild(sell);
+        row.appendChild(sell);
     return row;
 }
 
@@ -7351,60 +7655,9 @@ function grantPendingPromo() {
         if (givePromoMoney(true)) localStorage.removeItem(PROMO_PENDING);
     }
 }
-function poolARate() {
-    let n = 6;
-    try {
-        const saved = localStorage.getItem("fc-pool-a");
-        if (saved !== null && saved !== "") n = Number(saved);
-    } catch (e) {}
-    if (!isFinite(n)) n = 6;
-    return Math.max(0, Math.min(100, Math.round(n)));
-}
-function setPoolARate(raw) {
-    const n = Math.max(0, Math.min(100, Math.round(Number(raw))));
-    if (!isFinite(n)) return;
-    try { localStorage.setItem("fc-pool-a", String(n)); } catch (e) {}
-    const input = get("adminPoolA");
-    if (input) input.value = String(n);
-    const note = get("adminNote");
-    if (note) note.textContent = t("adminPoolASet", { n: n });
-}
-function adminOn() {
-    try { return localStorage.getItem("fc-admin") === "1"; } catch (e) { return false; }
-}
-function paintAdmin() {
-    const lock = get("adminLock");
-    const tools = get("adminTools");
-    const on = adminOn();
-    if (lock) lock.hidden = on;
-    if (tools) tools.hidden = !on;
-    const rate = get("adminPoolA");
-    if (rate && document.activeElement !== rate) rate.value = String(poolARate());
-}
-function tryAdminCode() {
-    const el = get("adminCode");
-    const raw = el ? el.value : "";
-    if (promoNorm(raw).replace(/\./g, "") === "CRIS7") {
-        if (el) el.value = "";
-        unlockAdmin();
-        return;
-    }
-    const note = get("adminNote");
-    if (note) note.textContent = t("promoBad");
-}
-function unlockAdmin() {
-    try { localStorage.setItem("fc-admin", "1"); } catch (e) {}
-    paintAdmin();
-    setPromoHints(t("adminCode"));
-    Sfx.ding();
-}
 function tryPromo(raw) {
     Sfx.unlock();
     Sfx.click();
-    if (promoNorm(raw).replace(/\./g, "") === "CRIS7") {
-        unlockAdmin();
-        return;
-    }
     if (!promoOk(raw)) {
         Sfx.error();
         setPromoHints(t("promoBad"));
@@ -7885,6 +8138,17 @@ function bind() {
         playOnline();
     });
     get("joinBattleBtn").addEventListener("click", joinOnlineCode);
+    const pvpRegBtn = get("pvpRegBtn");
+    const pvpQueueBtn = get("pvpQueueBtn");
+    const pvpBotBtn = get("pvpBotBtn");
+    if (pvpRegBtn) pvpRegBtn.addEventListener("click", function () { Sfx.click(); pvpEnter(); });
+    if (pvpQueueBtn) pvpQueueBtn.addEventListener("click", function () { Sfx.click(); pvpQueue(); });
+    if (pvpBotBtn) pvpBotBtn.addEventListener("click", function () {
+        Sfx.click();
+        if (onlineTimer) clearTimeout(onlineTimer);
+        stopPvpPoll();
+        showOnlineFound(pickOnlineRival());
+    });
     get("copyBattleCode").addEventListener("click", copyBattleCode);
     get("friendBattleCode").addEventListener("keydown", function (event) {
         if (event.key === "Enter") joinOnlineCode();
@@ -7936,10 +8200,10 @@ function bind() {
             const sell = event.target.closest("[data-sell]");
             if (sell) {
                 const star = starCard(sell.getAttribute("data-sell"));
-                if (star) {
-                    Sfx.click();
-                    releaseStar(star);
-                }
+            if (star) {
+                Sfx.click();
+                releaseStar(star);
+            }
                 return;
             }
             const role = event.target.closest("[data-role]");
@@ -8012,7 +8276,11 @@ window.onLangChange = function () {
         if (typeof renderCreatePicks === "function") renderCreatePicks();
     }
     updateContinueBtn();
-    if (player && player.name) renderAll();
+    if (player && player.name) {
+        renderAll();
+        const draftBox = get("draftOverlay");
+        if (draftBox && !draftBox.hidden) renderDraft();
+    }
     if (typeof renderAuction === "function") renderAuction();
 };
 
@@ -8035,31 +8303,16 @@ document.addEventListener("DOMContentLoaded", function () {
     const styleBtn = get("styleBtn");
     const stylePanel = get("stylePanel");
     if (styleBtn && stylePanel) {
+        let styleHold = 0;
         styleBtn.addEventListener("click", function (event) {
+            event.preventDefault();
             event.stopPropagation();
             Sfx.click();
             stylePanel.hidden = !stylePanel.hidden;
+            if (!stylePanel.hidden) styleHold = Date.now() + 450;
         });
         stylePanel.addEventListener("click", function (event) {
-            if (event.target.closest(".admin-box")) event.stopPropagation();
-            if (event.target.id === "adminCodeBtn") {
-                Sfx.click();
-                tryAdminCode();
-                return;
-            }
-            if (event.target.id === "adminPoolABtn") {
-                event.stopPropagation();
-                Sfx.click();
-                setPoolARate(get("adminPoolA") ? get("adminPoolA").value : "");
-                return;
-            }
-            const admin = event.target.closest("[data-admin]");
-            if (admin) {
-                event.stopPropagation();
-                Sfx.click();
-                runAdmin(admin.getAttribute("data-admin"));
-                return;
-            }
+            event.stopPropagation();
             const btn = event.target.closest("[data-style]");
             if (!btn) return;
             event.stopPropagation();
@@ -8070,6 +8323,19 @@ document.addEventListener("DOMContentLoaded", function () {
         const draftOpen = get("draftOpen");
         const draftClose = get("draftClose");
         if (draftOpen) draftOpen.addEventListener("click", function () { Sfx.click(); openDraft(); });
+        const taleOpen = get("taleOpen");
+        const taleActs = get("taleActs");
+        const taleLater = get("taleLater");
+        if (taleOpen) taleOpen.addEventListener("click", function () { Sfx.click(); openTale(); });
+        if (taleActs) taleActs.addEventListener("click", function (event) {
+            const btn = event.target.closest("[data-pick]");
+            if (!btn) return;
+            Sfx.click();
+            pickTale(btn.getAttribute("data-pick"));
+        });
+        if (taleLater) taleLater.addEventListener("click", function () { Sfx.click(); closeTale(); });
+        const liveDraft = get("liveDraft");
+        if (liveDraft) liveDraft.addEventListener("click", function () { Sfx.click(); openDraft(); });
         const voucherBuy = get("voucherBuy");
         if (voucherBuy) voucherBuy.addEventListener("click", function () {
             Sfx.click();
@@ -8082,18 +8348,17 @@ document.addEventListener("DOMContentLoaded", function () {
             if (event.target === pullReveal || event.target === pullOk) hidePull();
         });
         if (pullOk) pullOk.addEventListener("click", function () { Sfx.click(); hidePull(); });
-        document.addEventListener("click", function () { stylePanel.hidden = true; });
-    }
-    syncMuteButton();
-    paintAdmin();
-    const poolInput = get("adminPoolA");
-    if (poolInput) {
-        poolInput.addEventListener("keydown", function (event) {
-            if (event.key !== "Enter") return;
-            event.preventDefault();
-            setPoolARate(poolInput.value);
+        document.addEventListener("click", function (event) {
+            if (Date.now() < styleHold) return;
+            if (event.target.closest("#stylePanel") || event.target.closest("#styleBtn")) return;
+            stylePanel.hidden = true;
         });
     }
+    syncMuteButton();
+    try {
+        localStorage.removeItem("fc-admin");
+        localStorage.removeItem("fc-pool-a");
+    } catch (e) {}
     paintLive();
     setInterval(paintLive, 1000);
     renderRecords();

@@ -417,6 +417,21 @@ h2 {
     border-color: rgba(212, 175, 55, 0.55);
 }
 
+.tale-card {
+    border-color: rgba(120, 170, 255, 0.45);
+}
+
+.tale-acts {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.tale-acts button {
+    width: 100%;
+}
+
 .drop-kicker {
     margin: 0 0 4px;
     letter-spacing: 0.18em;
@@ -459,6 +474,11 @@ h2 {
     letter-spacing: 0.14em;
     border-radius: 999px;
     padding: 6px 12px;
+}
+
+.live-upd .gold {
+    width: 100%;
+    margin-top: 4px;
 }
 
 .live-upd > b {
@@ -2653,6 +2673,17 @@ body.injured .hook span {
 
 .battle-code .hint {
     margin-top: 0;
+}
+
+#pvpReg input,
+#pvpWait .hint {
+    text-align: left;
+}
+
+#pvpRegBtn,
+#pvpQueueBtn,
+#pvpBotBtn {
+    width: 100%;
 }
 
 .battle-code-row {

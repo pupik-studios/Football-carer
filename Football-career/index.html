@@ -39,7 +39,7 @@
       #studioSplash .studio-tap{margin:28px 0 0;letter-spacing:.34em;text-transform:uppercase;font-size:11px;font-weight:800;color:#d4af37}
       #studioSplash .studio-line{width:min(220px,46vw);height:1px;margin:10px 0 6px;background:linear-gradient(90deg,transparent,#d4af37,transparent)}
     </style>
-    <link rel="stylesheet" href="style.css?v=115">
+    <link rel="stylesheet" href="style.css?v=127">
 </head>
 <body>
 
@@ -55,25 +55,6 @@
         <button type="button" data-style="plain" data-i18n="stylePlain">Обычный</button>
         <button type="button" data-style="arcade" data-i18n="styleArcade">Аркада</button>
         <button type="button" data-style="board" data-i18n="styleBoard">Табло</button>
-        <div class="admin-box">
-            <p data-i18n="adminTitle">Админ</p>
-            <div class="admin-code" id="adminLock">
-                <input id="adminCode" maxlength="12" placeholder="код" autocomplete="off" autocapitalize="characters" spellcheck="false">
-                <button type="button" id="adminCodeBtn">ОК</button>
-            </div>
-            <div id="adminTools" hidden>
-                <button type="button" data-admin="day" data-i18n="adminDay">+1 день</button>
-                <button type="button" data-admin="skip" data-i18n="adminSkip">+4 дня</button>
-                <button type="button" data-admin="money" data-i18n="adminMoney">+$10 000</button>
-                <button type="button" data-admin="draft" data-i18n="adminDraft">+1 драфт</button>
-                <div class="admin-code">
-                    <span data-i18n="adminPoolA">Пул A %</span>
-                    <input id="adminPoolA" type="number" min="0" max="100" step="1" value="6" inputmode="numeric">
-                    <button type="button" id="adminPoolABtn">ОК</button>
-                </div>
-            </div>
-            <p class="hint" id="adminNote"></p>
-        </div>
     </div>
 </div>
 
@@ -107,6 +88,17 @@
             <div class="battle-side" id="battleYou"></div>
             <b>VS</b>
             <div class="battle-side" id="battleThem"></div>
+        </div>
+        <div id="pvpReg" hidden>
+            <p class="hint" id="pvpRegHint">Имя и пароль. Другой игрок в этой сети найдёт тебя по ним.</p>
+            <input id="pvpName" type="text" maxlength="16" placeholder="Имя" autocomplete="username">
+            <input id="pvpPin" type="password" maxlength="12" placeholder="Пароль, от 4 знаков" autocomplete="current-password">
+            <button type="button" id="pvpRegBtn" class="gold">Войти</button>
+        </div>
+        <div id="pvpWait" hidden>
+            <p class="hint" id="pvpWaitText"></p>
+            <button type="button" id="pvpQueueBtn" class="gold">Искать бой</button>
+            <button type="button" id="pvpBotBtn">Тренировка с ботом</button>
         </div>
         <div class="battle-code" id="battleCodeBox">
             <p class="hint" data-i18n="yourCode">Твой код — друг играет против твоей карточки</p>
@@ -185,6 +177,16 @@
         <p class="hint" id="draftHint"></p>
         <div class="draft-picks" id="draftPicks"></div>
         <button type="button" id="draftClose" class="back-btn" data-i18n="calClose">Закрыть</button>
+    </div>
+</div>
+
+<div id="taleOverlay" class="cal-overlay" hidden>
+    <div class="cal-window">
+        <p class="cal-kicker" id="taleKicker">СЮЖЕТ</p>
+        <h2 id="taleTitle">Критик</h2>
+        <p class="hint" id="taleText"></p>
+        <div class="tale-acts" id="taleActs"></div>
+        <button type="button" id="taleLater" class="back-btn">Позже</button>
     </div>
 </div>
 
@@ -350,6 +352,7 @@
         <small id="liveText"></small>
         <p class="live-only" id="liveOnly">Эксклюзивные карты только эти 4 дня</p>
         <div class="live-cards" id="liveCards"></div>
+        <button type="button" id="liveDraft" class="gold" data-i18n="draftOpen">Открыть драфт</button>
     </div>
 
     <div class="hook" id="hookBar">
@@ -374,6 +377,12 @@
         <div class="live-cards" id="dropCards"></div>
         <p class="hint" id="dropNext"></p>
         <button type="button" id="draftOpen" class="gold" data-i18n="draftOpen">Открыть драфт</button>
+    </div>
+    <div class="card tale-card" id="taleCard" hidden>
+        <p class="drop-kicker">СЮЖЕТ</p>
+        <h2 id="taleCardTitle">Критик</h2>
+        <p class="hint" id="taleCardText"></p>
+        <button type="button" id="taleOpen" class="gold">Ответить критику</button>
     </div>
     <div class="card" id="bodyCard">
         <h2 data-i18n="body">Тело</h2>
@@ -680,8 +689,8 @@
     </div>
 </div>
 
-<script src="audio.js?v=115" defer></script>
-<script src="loc.js?v=115" defer></script>
-<script src="game.js?v=115" defer></script>
+<script src="audio.js?v=127" defer></script>
+<script src="loc.js?v=127" defer></script>
+<script src="game.js?v=127" defer></script>
 </body>
 </html>
