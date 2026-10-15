@@ -523,6 +523,10 @@ function newPlayer(name, position, nation, avatar) {
         loanPlan: "",
         bankUntil: 0,
         matchPlan: "balance",
+        draftTokens: 0,
+        draftRun: null,
+        exclusives: [],
+        draftMark: "",
         stats: Object.assign({}, START_STATS[pos] || START_STATS.ST)
     };
 }
@@ -574,6 +578,10 @@ function newClub(name, city, nation, avatar) {
         loanPlan: "",
         bankUntil: 0,
         matchPlan: "balance",
+        draftTokens: 0,
+        draftRun: null,
+        exclusives: [],
+        draftMark: "",
         stats: {
             pace: 55,
             shooting: 56,
@@ -993,8 +1001,8 @@ function makeGrid(fromWeek, count) {
             lastNat = opp;
         } else {
             opp = pool[i % pool.length];
-            if (opp === last) opp = pool[(i + 1) % pool.length];
-            last = opp;
+        if (opp === last) opp = pool[(i + 1) % pool.length];
+        last = opp;
         }
         rows.push({
             week: week,
@@ -1954,6 +1962,17 @@ function signSponsor(id) {
     save();
 }
 
+function dropSponsor(id) {
+    if (!player || !player.name) return;
+    const sp = sponsorById(id);
+    if (!sp || !ownedSponsor(id)) return;
+    player.sponsors = (player.sponsors || []).filter(function (row) { return row.id !== id; });
+    Sfx.click();
+    addLog(t("logDealDrop", { name: sp.emoji + " " + sp.name }));
+    renderAll();
+    save();
+}
+
 function updateSponsors() {
     const box = get("sponsorList");
     const week = get("sponsorWeek");
@@ -1979,6 +1998,13 @@ function updateSponsors() {
             });
         btn.disabled = !!mine || !player || !player.name;
         box.appendChild(btn);
+        if (mine) {
+            const drop = document.createElement("button");
+            drop.type = "button";
+            drop.setAttribute("data-drop", sp.id);
+            drop.textContent = t("dealDrop");
+            box.appendChild(drop);
+        }
     });
 }
 
@@ -2081,6 +2107,849 @@ function updateBrand() {
         body.appendChild(tr);
     });
     updateSponsors();
+}
+
+const EXCLUSIVES = [
+    { id: "x-cr7", name: "Роналду Драфт", en: "Draft Ronaldo", pos: "ST", ovr: 99, flag: "🇵🇹", club: "Эксклюзив", exclusive: true },
+    { id: "x-felix", name: "Феликс Драфт", en: "Draft Félix", pos: "CAM", ovr: 92, flag: "🇵🇹", club: "Эксклюзив", exclusive: true },
+    { id: "x-messi", name: "Месси", en: "Messi", pos: "RW", ovr: 96, flag: "🇦🇷", club: "Inter Miami", exclusive: true },
+    { id: "x-modric", name: "Модрич", en: "Modrić", pos: "CM", ovr: 85, flag: "🇭🇷", club: "Milan", exclusive: true },
+    { id: "x-mbappe", name: "Мбаппе", en: "Mbappé", pos: "ST", ovr: 94, flag: "🇫🇷", club: "Real Madrid", exclusive: true },
+    { id: "x-vini", name: "Винисиус", en: "Vinicius", pos: "LW", ovr: 90, flag: "🇧🇷", club: "Real Madrid", exclusive: true },
+    { id: "x-bellingham", name: "Беллингем", en: "Bellingham", pos: "CM", ovr: 89, flag: "🇬🇧", club: "Real Madrid", exclusive: true },
+    { id: "x-lautaro", name: "Лаутаро", en: "Lautaro", pos: "ST", ovr: 90, flag: "🇦🇷", club: "Интер", exclusive: true },
+    { id: "x-barella", name: "Барелла", en: "Barella", pos: "CM", ovr: 87, flag: "🇮🇹", club: "Интер", exclusive: true },
+    { id: "x-leao", name: "Леау", en: "Leão", pos: "LW", ovr: 88, flag: "🇵🇹", club: "Milan", exclusive: true },
+    { id: "x-musiala", name: "Мусиала", en: "Musiala", pos: "CAM", ovr: 91, flag: "🇩🇪", club: "Bayern", exclusive: true },
+    { id: "x-kane", name: "Кейн", en: "Kane", pos: "ST", ovr: 90, flag: "🇬🇧", club: "Bayern", exclusive: true },
+    { id: "x-kimmich", name: "Киммих", en: "Kimmich", pos: "CM", ovr: 88, flag: "🇩🇪", club: "Bayern", exclusive: true },
+    { id: "x-yamal", name: "Ямаль", en: "Yamal", pos: "RW", ovr: 89, flag: "🇪🇸", club: "Barcelona", exclusive: true },
+    { id: "x-pedri", name: "Педри", en: "Pedri", pos: "CM", ovr: 87, flag: "🇪🇸", club: "Barcelona", exclusive: true },
+    { id: "x-raphinha", name: "Рафинья", en: "Raphinha", pos: "RW", ovr: 86, flag: "🇧🇷", club: "Barcelona", exclusive: true },
+    { id: "x-salah", name: "Салах", en: "Salah", pos: "RW", ovr: 93, flag: "🇪🇬", club: "Liverpool", exclusive: true },
+    { id: "x-haaland", name: "Холанд", en: "Haaland", pos: "ST", ovr: 91, flag: "🇳🇴", club: "City", exclusive: true },
+    { id: "x-vandijk", name: "Ван Дейк", en: "Van Dijk", pos: "CB", ovr: 88, flag: "🇳🇱", club: "Liverpool", exclusive: true }
+];
+const DRAFTS = [
+    { id: "duo", title: "dropLinkT", text: "dropLink", reward: ["x-messi", "x-modric"], tone: "dusk" },
+    { id: "ucl", title: "dropUclT", text: "dropUcl", reward: ["x-mbappe", "x-vini", "x-bellingham"], tone: "rainbow", ms: 8 * 24 * 60 * 60 * 1000 },
+    { id: "serie", title: "dropSerieT", text: "dropSerie", reward: ["x-lautaro", "x-barella", "x-leao"], tone: "serie" },
+    { id: "bund", title: "dropBundT", text: "dropBund", reward: ["x-musiala", "x-kane", "x-kimmich"], tone: "bund" },
+    { id: "liga", title: "dropLigaT", text: "dropLiga", reward: ["x-yamal", "x-pedri", "x-raphinha"], tone: "liga" },
+    { id: "epl", title: "dropEplT", text: "dropEpl", reward: ["x-salah", "x-haaland", "x-vandijk"], tone: "epl" }
+];
+const DRAFT_XI = ["GK", "LB", "CB", "CB", "RB", "CM", "CAM", "CM", "LW", "ST", "RW"];
+const DRAFT_LINE_IX = [[8, 9, 10], [5, 6, 7], [1, 2, 3, 4], [0]];
+const DROP_MS = 4 * 24 * 60 * 60 * 1000;
+const DROP_START = Date.UTC(2026, 9, 8);
+const CLOCK_KEY = "fc-clock";
+
+function gameNow() {
+    let extra = 0;
+    try { extra = Number(localStorage.getItem(CLOCK_KEY)) || 0; } catch (e) {}
+    return Date.now() + extra;
+}
+
+function shiftClock(ms) {
+    let extra = 0;
+    try { extra = Number(localStorage.getItem(CLOCK_KEY)) || 0; } catch (e) {}
+    try { localStorage.setItem(CLOCK_KEY, String(extra + ms)); } catch (e) {}
+}
+
+function exclusiveById(id) {
+    return EXCLUSIVES.find(function (row) { return row.id === id; }) || null;
+}
+
+function dropLength(drop) {
+    return (drop && drop.ms) || DROP_MS;
+}
+
+function dropNow() {
+    const gone = Math.max(0, gameNow() - DROP_START);
+    let cycle = 0;
+    DRAFTS.forEach(function (drop) { cycle += dropLength(drop); });
+    const loops = Math.floor(gone / cycle);
+    let rest = gone % cycle;
+    for (let i = 0; i < DRAFTS.length; i++) {
+        const len = dropLength(DRAFTS[i]);
+        if (rest < len) {
+            const left = len - rest;
+            return {
+                drop: DRAFTS[i],
+                n: loops * DRAFTS.length + i,
+                days: Math.max(1, Math.ceil(left / 86400000)),
+                left: left
+            };
+        }
+        rest -= len;
+    }
+    return { drop: DRAFTS[0], n: loops * DRAFTS.length, days: 4, left: DROP_MS };
+}
+
+const PITY_A = 25;
+const PITY_B = 10;
+const DRAFT_SPIN_COST = 100;
+const PHASE_PAY = { A: 8, B: 3, C: 1 };
+
+function ensureDraft() {
+    if (!player) return;
+    if (typeof player.draftTokens !== "number") player.draftTokens = 0;
+    if (typeof player.draftNote !== "string") player.draftNote = "";
+    if (!Array.isArray(player.exclusives)) player.exclusives = [];
+    if (!player.draftMark) player.draftMark = "";
+    if (typeof player.draftPityA !== "number") player.draftPityA = PITY_A;
+    if (typeof player.draftPityB !== "number") player.draftPityB = PITY_B;
+    if (typeof player.phaseTokens !== "number") player.phaseTokens = 0;
+    if (!Array.isArray(player.draftBag)) player.draftBag = [];
+    if (player.draftOffer && !Array.isArray(player.draftOffer.ids)) player.draftOffer = null;
+    if (player.draftRun) {
+        player.draftTokens += 1;
+        player.draftRun = null;
+        save();
+    }
+}
+
+function syncDraftWindow() {
+    if (!player || !player.name) return;
+    ensureDraft();
+    const now = dropNow();
+    const mark = now.drop.id + ":" + now.n;
+    if (player.draftMark === mark) return;
+    player.draftMark = mark;
+    player.draftTokens += 1;
+    addLog(t("logDraft", { name: t(now.drop.title) }));
+    save();
+}
+
+function updateDrop() {
+    const card = get("dropCard");
+    const club = !!(player && player.name && isClub());
+    if (card) card.hidden = !club;
+    if (!club) {
+        closeDraft();
+        paintLive();
+        return;
+    }
+    syncDraftWindow();
+    const now = dropNow();
+    const title = get("dropTitle");
+    const text = get("dropText");
+    const next = get("dropNext");
+    const kicker = get("dropKicker");
+    if (kicker) kicker.textContent = t("dropKicker");
+    if (title) title.textContent = t(now.drop.title);
+    if (text) text.textContent = t(now.drop.text);
+    if (next) next.textContent = t("dropNext", { n: now.days, t: player && player.name ? player.draftTokens : 0 });
+    paintExclusiveCards(get("dropCards"));
+    paintLive();
+}
+
+function draftBag(pos) {
+    if (pos === "GK") return ["GK"];
+    if (pos === "LB") return ["LB"];
+    if (pos === "RB") return ["RB"];
+    if (pos === "CB") return ["CB"];
+    if (pos === "CAM") return ["CAM"];
+    if (pos === "LW") return ["LW"];
+    if (pos === "RW") return ["RW"];
+    if (pos === "ST") return ["ST"];
+    return ["CM", "CDM"];
+}
+
+function shuffleIds(list) {
+    const copy = list.slice();
+    for (let i = copy.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        const tmp = copy[i];
+        copy[i] = copy[j];
+        copy[j] = tmp;
+    }
+    return copy;
+}
+
+function draftPool(round, picked, run) {
+    const pos = DRAFT_XI[round];
+    const bag = draftBag(pos);
+    const pool = everyStar().filter(function (star) {
+        return star.id && bag.indexOf(star.pos) >= 0 && picked.indexOf(star.id) < 0;
+    });
+    const ids = shuffleIds(pool).slice(0, 5).map(function (star) { return star.id; });
+    const draft = DRAFTS.find(function (row) { return row.id === (run && run.id); }) || dropNow().drop;
+    if (!run.shownEx) run.shownEx = [];
+    const ex = (draft.reward || []).map(exclusiveById).find(function (row) {
+        return row && row.pos === pos && run.shownEx.indexOf(row.id) < 0 && picked.indexOf(row.id) < 0;
+    });
+    if (ex && ids.length) {
+        ids[Math.floor(Math.random() * ids.length)] = ex.id;
+        run.shownEx.push(ex.id);
+    }
+    return ids;
+}
+
+function starCard(id) {
+    return exclusiveById(id) || TRANSFER_STARS.find(function (star) { return star.id === id; }) || everyStar().find(function (star) { return star.id === id; }) || null;
+}
+
+function futTier(star) {
+    if (!star) return "gold";
+    if (star.exclusive) return "exclusive";
+    if ((star.ovr || 0) >= 90) return "special";
+    if ((star.ovr || 0) >= 83) return "gold";
+    if ((star.ovr || 0) >= 75) return "silver";
+    return "bronze";
+}
+
+function liveReward(id) {
+    return (dropNow().drop.reward || []).indexOf(id) >= 0;
+}
+
+function paintExclusiveCards(box) {
+    if (!box) return;
+    box.innerHTML = "";
+    (dropNow().drop.reward || []).forEach(function (id) {
+        const star = exclusiveById(id);
+        if (!star) return;
+        const card = document.createElement("div");
+        card.className = "live-card tone-" + (dropNow().drop.tone || "dusk");
+        const ovr = document.createElement("b");
+        ovr.textContent = String(star.ovr);
+        const name = document.createElement("span");
+        name.textContent = (star.flag ? star.flag + " " : "") + (shown(star) || star.name || "");
+        const pos = document.createElement("small");
+        pos.textContent = star.pos || "";
+        card.appendChild(ovr);
+        card.appendChild(name);
+        card.appendChild(pos);
+        box.appendChild(card);
+    });
+}
+
+function liveClock() {
+    const sec = Math.max(0, Math.ceil(dropNow().left / 1000));
+    const d = Math.floor(sec / 86400);
+    const h = Math.floor((sec % 86400) / 3600);
+    const m = Math.floor((sec % 3600) / 60);
+    const s = sec % 60;
+    const pad = function (n) { return (n < 10 ? "0" : "") + n; };
+    return t("liveClock", { d: d, h: pad(h), m: pad(m), s: pad(s) });
+}
+
+let liveMark = "";
+function paintLive() {
+    const bar = get("liveUpd");
+    const club = !!(player && player.name && isClub());
+    if (bar) bar.hidden = !club;
+    if (!club) return;
+    const now = dropNow();
+    const title = get("liveTitle");
+    const text = get("liveText");
+    const left = get("liveLeft");
+    const kicker = get("liveKicker");
+    if (kicker) kicker.textContent = t("liveKicker");
+    if (title) title.textContent = t(now.drop.title);
+    if (text) text.textContent = t(now.drop.text);
+    if (left) left.textContent = liveClock();
+    const only = get("liveOnly");
+    if (only) only.textContent = now.drop.tone === "rainbow" ? t("liveOnlyLong") : t("liveOnly");
+    if (bar) bar.className = "live-upd tone-" + (now.drop.tone || "dusk");
+    paintExclusiveCards(get("liveCards"));
+    const mark = now.drop.id + ":" + now.n;
+    const flipped = liveMark && liveMark !== mark;
+    liveMark = mark;
+    if (flipped) updateDrop();
+}
+
+function openDraft() {
+    const box = get("draftOverlay");
+    if (!box || !player || !player.name || !isClub()) return;
+    box.hidden = false;
+    renderDraft();
+}
+
+function closeDraft() {
+    const box = get("draftOverlay");
+    if (box) box.hidden = true;
+}
+
+function ensureTale() {
+    if (!player) return;
+    if (!player.tale || typeof player.tale.step !== "number") player.tale = { step: 0, tone: "" };
+}
+
+function taleBeats() {
+    return [
+        {
+            id: "arrive",
+            title: "tale1t",
+            text: function () { return t("tale1"); },
+            ready: function () { return true; },
+            picks: [
+                { id: "a", label: "tale1a", log: "tale1alog", fame: 2, stat: "passing", tone: "team" },
+                { id: "b", label: "tale1b", log: "tale1blog", fame: -1, stat: "shooting", cash: 80, tone: "star" },
+                { id: "c", label: "tale1c", log: "tale1clog", fame: 1, stat: "defending", tone: "quiet" },
+                { id: "d", label: "tale1d", log: "tale1dlog", fame: 3, cash: -20, stat: "physical", tone: "loud" }
+            ]
+        },
+        {
+            id: "column",
+            title: "tale2t",
+            text: function () { return t(player.tale.tone === "star" || player.tale.tone === "loud" ? "tale2star" : "tale2team"); },
+            ready: function () { return (player.matches || 0) >= 1; },
+            picks: [
+                { id: "a", label: "tale2a", log: "tale2alog", fame: 1, cash: 60 },
+                { id: "b", label: "tale2b", log: "tale2blog", fame: 3, cash: -30 },
+                { id: "c", label: "tale2c", log: "tale2clog", fame: 2, cash: 20 },
+                { id: "d", label: "tale2d", log: "tale2dlog", stat: "pace" }
+            ]
+        },
+        {
+            id: "mic",
+            title: "tale3t",
+            text: function () { return t("tale3"); },
+            ready: function () { return (player.week || 1) >= 6; },
+            picks: [
+                { id: "a", label: "tale3a", log: "tale3alog", fame: 2, cash: 150 },
+                { id: "b", label: "tale3b", log: "tale3blog", fame: 1, stat: "physical", statN: 2 },
+                { id: "c", label: "tale3c", log: "tale3clog", fame: 2, stat: "passing", cash: 40 },
+                { id: "d", label: "tale3d", log: "tale3dlog", fame: -1, stat: "shooting", cash: 30 }
+            ]
+        }
+    ];
+}
+
+function currentTale() {
+    ensureTale();
+    const beats = taleBeats();
+    const beat = beats[player.tale.step];
+    if (!beat || !beat.ready()) return null;
+    return beat;
+}
+
+function taleStat(key, n) {
+    if (!player.stats) return;
+    if (typeof player.stats[key] !== "number") {
+        const keys = statKeys();
+        key = keys[0];
+    }
+    if (typeof player.stats[key] !== "number") return;
+    player.stats[key] = Math.min(99, player.stats[key] + (n || 1));
+}
+
+let taleAuto = "";
+
+function closeTale() {
+    const box = get("taleOverlay");
+    if (box) box.hidden = true;
+}
+
+function openTale() {
+    const beat = currentTale();
+    const box = get("taleOverlay");
+    if (!beat || !box) return;
+    const kicker = get("taleKicker");
+    const title = get("taleTitle");
+    const text = get("taleText");
+    const acts = get("taleActs");
+    const later = get("taleLater");
+    if (kicker) kicker.textContent = t("taleKicker");
+    if (title) title.textContent = t(beat.title);
+    if (text) text.textContent = beat.text();
+    if (acts) {
+        acts.textContent = "";
+        (beat.picks || []).forEach(function (pick) {
+            const btn = document.createElement("button");
+            btn.type = "button";
+            btn.setAttribute("data-pick", pick.id);
+            btn.textContent = t(pick.label);
+            acts.appendChild(btn);
+        });
+    }
+    if (later) later.textContent = t("taleLater");
+    taleAuto = beat.id;
+    box.hidden = false;
+}
+
+function pickTale(side) {
+    const beat = currentTale();
+    const pick = beat.picks && beat.picks.find(function (row) { return row.id === side; });
+    if (!pick) return;
+    if (pick.cash) player.respect = Math.max(0, (player.respect || 0) + pick.cash);
+    if (pick.fame) addFame(pick.fame);
+    if (pick.stat) taleStat(pick.stat, pick.statN || 1);
+    if (pick.tone) player.tale.tone = pick.tone;
+    player.tale.step += 1;
+    addLog(t(pick.log));
+    closeTale();
+    save();
+    updateRespect();
+    updateFame();
+    updateStats();
+    paintTale();
+    Sfx.ding();
+}
+
+function paintTale() {
+    const card = get("taleCard");
+    if (!card) return;
+    const on = !!(player && player.name);
+    card.hidden = !on;
+    if (!on) return;
+    ensureTale();
+    const beat = currentTale();
+    const open = get("taleOpen");
+    const title = get("taleCardTitle");
+    const text = get("taleCardText");
+    if (beat) {
+        if (title) title.textContent = t(beat.title);
+        if (text) text.textContent = beat.text();
+        if (open) {
+            open.hidden = false;
+            open.textContent = t("taleOpen");
+        }
+    } else {
+        if (open) open.hidden = true;
+        if (player.tale.step >= taleBeats().length) {
+            if (title) title.textContent = t("taleEndT");
+            if (text) text.textContent = t("taleEnd");
+        } else {
+            if (title) title.textContent = t("taleWho");
+            if (text) text.textContent = t((player.matches || 0) < 1 ? "taleWait" : "taleWaitLate");
+        }
+    }
+    const box = get("taleOverlay");
+    if (box && !box.hidden) openTale();
+}
+
+function maybeTale() {
+    const screen = get("careerScreen");
+    if (!screen || screen.style.display === "none") return;
+    const beat = currentTale();
+    if (!beat || taleAuto === beat.id) return;
+    const box = get("taleOverlay");
+    if (!box || !box.hidden) return;
+    const draft = get("draftOverlay");
+    if (draft && !draft.hidden) return;
+    openTale();
+}
+
+function personKey(star) {
+    const raw = String((star && (star.en || star.name)) || "").toLowerCase();
+    const plain = raw.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const bits = plain.split(/[^a-z]+/).filter(Boolean);
+    if (bits.length >= 2 && (bits[bits.length - 2] === "van" || bits[bits.length - 2] === "de")) {
+        return bits[bits.length - 2] + bits[bits.length - 1];
+    }
+    return bits.length ? bits[bits.length - 1] : "";
+}
+
+function draftPools() {
+    const blocked = {};
+    (dropNow().drop.reward || []).forEach(function (id) {
+        const ex = exclusiveById(id);
+        const key = personKey(ex);
+        if (key) blocked[key] = true;
+    });
+    const stars = everyStar().filter(function (star) {
+        if (!star || !star.id || star.dead || star.exclusive) return false;
+        const key = personKey(star);
+        return !key || !blocked[key];
+    });
+    const pools = {
+        A: stars.filter(function (star) { return (star.ovr || 0) >= 90; }),
+        B: stars.filter(function (star) { return (star.ovr || 0) >= 83 && (star.ovr || 0) < 90; }),
+        C: stars.filter(function (star) { return (star.ovr || 0) >= 74 && (star.ovr || 0) < 83; })
+    };
+    (dropNow().drop.reward || []).forEach(function (id) {
+        const ex = exclusiveById(id);
+        if (ex && !pools.A.some(function (star) { return star.id === ex.id; })) pools.A.push(ex);
+    });
+    return pools;
+}
+
+function keepStar(star) {
+    if (!star) return;
+    if (star.exclusive) grantExclusive([star.id]);
+    else if (!isFriend(star.id)) addFriend(star);
+}
+
+function spinDraft() {
+    ensureDraft();
+    if (!isClub()) return;
+    if (player.draftOffer) return;
+    if (player.draftTokens < 1) {
+        player.draftNote = t("draftNeed", { n: dropNow().days });
+        renderDraft();
+        return;
+    }
+    if ((player.respect || 0) < DRAFT_SPIN_COST) {
+        player.draftNote = t("draftCostNeed", { n: money(DRAFT_SPIN_COST) });
+        renderDraft();
+        return;
+    }
+    const pools = draftPools();
+    const pityA = player.draftPityA - 1;
+    const pityB = player.draftPityB - 1;
+    const roll = Math.random();
+    let pool = "C";
+    if (pityA <= 0 || roll < 0.06) pool = "A";
+    else if (pityB <= 0 || roll < 0.28) pool = "B";
+    if (!pools[pool].length) pool = pools.B.length ? "B" : "C";
+    const ready = (pools[pool] || []).filter(function (row) { return row && row.id && row.name && row.ovr; });
+    if (!ready.length) {
+        player.draftNote = t("draftNeed", { n: dropNow().days });
+        renderDraft();
+        return;
+    }
+    player.draftTokens -= 1;
+    player.draftPityA = pool === "A" ? PITY_A : pityA;
+    player.draftPityB = pool === "A" || pool === "B" ? PITY_B : pityB;
+    player.respect = (player.respect || 0) - DRAFT_SPIN_COST;
+    const star = ready[Math.floor(Math.random() * ready.length)];
+    player.draftBag.unshift({ uid: Date.now() + "-" + Math.floor(Math.random() * 999), id: star.id, pool: pool });
+    if (player.draftBag.length > 12) player.draftBag.length = 12;
+    player.draftLast = {
+        id: star.id,
+        pool: pool,
+        name: star.name,
+        en: star.en || "",
+        ovr: star.ovr,
+        pos: star.pos || "",
+        flag: star.flag || "",
+        club: star.club || star.home || ""
+    };
+    keepStar(star);
+    grantSquad(star);
+    player.draftNote = t("draftGot", { pool: pool, name: shown(star) });
+    addLog(player.draftNote);
+    showPull(player.draftLast);
+    updateSquad();
+    updateRespect();
+    save();
+    updateDrop();
+    renderDraft();
+}
+
+function exchangeBag(uid) {
+    ensureDraft();
+    const item = player.draftBag.find(function (row) { return row.uid === uid; });
+    if (!item) return;
+    const pay = PHASE_PAY[item.pool] || 1;
+    player.phaseTokens += pay;
+    player.draftBag = player.draftBag.filter(function (row) { return row.uid !== uid; });
+    player.draftNote = t("draftSold", { n: pay });
+    save();
+    renderDraft();
+}
+
+function openPick(count, cost, poolKey) {
+    ensureDraft();
+    if (player.draftOffer) return;
+    if (player.phaseTokens < cost) {
+        player.draftNote = t("pickPoor");
+        renderDraft();
+        return;
+    }
+    const pools = draftPools();
+    const list = pools[poolKey] && pools[poolKey].length ? pools[poolKey] : pools.C;
+    const ids = shuffleIds(list).slice(0, count).map(function (star) { return star.id; });
+    if (count === 3) {
+        const ex = (dropNow().drop.reward || []).map(exclusiveById).find(function (row) {
+            return row && player.exclusives.indexOf(row.id) < 0;
+        });
+        if (ex) ids[0] = ex.id;
+    }
+    player.phaseTokens -= cost;
+    player.draftOffer = { ids: ids.filter(Boolean) };
+    save();
+    renderDraft();
+}
+
+function takeOffer(id) {
+    ensureDraft();
+    if (!player.draftOffer || player.draftOffer.ids.indexOf(id) < 0) return;
+    const star = starCard(id);
+    if (star && star.exclusive && !liveReward(star.id)) {
+        player.draftOffer = null;
+        player.draftNote = t("liveGone");
+        save();
+        renderDraft();
+        return;
+    }
+    keepStar(star);
+    player.draftOffer = null;
+    player.draftNote = star ? t("draftGot", { pool: star.exclusive ? "A" : "B", name: shown(star) }) : "";
+    if (player.draftNote) addLog(player.draftNote);
+    save();
+    renderDraft();
+}
+
+function grantExclusive(ids) {
+    ensureDraft();
+    for (let i = 0; i < ids.length; i++) {
+        const ex = exclusiveById(ids[i]);
+        if (!ex || player.exclusives.indexOf(ex.id) >= 0) continue;
+        player.exclusives.push(ex.id);
+        addFriend(ex);
+        const row = player.socFriends.find(function (friend) { return friend.id === ex.id; });
+        if (row) {
+            row.exclusive = true;
+            row.en = ex.en;
+            row.ovr = ex.ovr;
+            row.club = ex.club;
+        }
+        return ex;
+    }
+    return null;
+}
+
+function pullFace(last) {
+    if (!last) return null;
+    const live = last.id ? starCard(last.id) : null;
+    const name = (live && live.name) || last.name || "";
+    const ovr = (live && live.ovr) || last.ovr || 0;
+    if (!name || !ovr) return null;
+    const row = live || last;
+    return {
+        name: shown(row) || name,
+        ovr: ovr,
+        pos: (live && live.pos) || last.pos || "",
+        flag: (live && live.flag) || last.flag || "",
+        club: (live && (live.club || live.home)) || last.club || "",
+        pool: last.pool || ""
+    };
+}
+
+function clubTitle(club) {
+    const ru = {
+        "City": "Манчестер Сити", "Real Madrid": "Реал Мадрид", "Liverpool": "Ливерпуль",
+        "Bayern": "Бавария", "Barcelona": "Барселона", "Milan": "Милан", "Интер": "Интер",
+        "Inter Miami": "Интер Майами", "Al-Nassr": "Аль-Наср", "Chelsea": "Челси"
+    };
+    const en = {
+        "City": "Manchester City", "Real Madrid": "Real Madrid", "Liverpool": "Liverpool",
+        "Bayern": "Bayern", "Barcelona": "Barcelona", "Milan": "Milan", "Интер": "Inter",
+        "Inter Miami": "Inter Miami", "Al-Nassr": "Al-Nassr", "Chelsea": "Chelsea"
+    };
+    if (!club) return "";
+    const table = langEn() ? en : ru;
+    return table[club] || club;
+}
+
+let pullTimer = 0;
+function clearPullTimer() {
+    if (pullTimer) {
+        clearTimeout(pullTimer);
+        pullTimer = 0;
+    }
+}
+
+function showPull(last) {
+    const face = pullFace(last);
+    const box = get("pullReveal");
+    if (!box || !face) return;
+    clearPullTimer();
+    const kicker = get("pullKicker");
+    const pool = get("pullPool");
+    const ovr = get("pullOvr");
+    const name = get("pullName");
+    const meta = get("pullMeta");
+    if (kicker) kicker.textContent = t("draftDrop");
+    if (pool) pool.textContent = "Пул " + face.pool;
+    if (ovr) ovr.textContent = String(face.ovr);
+    if (name) name.textContent = (face.flag ? face.flag + " " : "") + face.name;
+    if (meta) meta.textContent = face.pos + (face.club ? " · " + clubTitle(face.club) : "");
+    const card = box.querySelector(".pull-card");
+    const intro = get("pullIntro");
+    const introText = get("pullIntroText");
+    if (card) {
+        const tone = last && last.id && liveReward(last.id) ? (dropNow().drop.tone || "dusk") : "";
+        card.className = "pull-card" + (tone ? " tone-" + tone : "");
+    }
+    if (face.pool !== "A" || !intro || !introText) {
+        if (intro) intro.hidden = true;
+        if (card) card.hidden = false;
+        box.hidden = false;
+        return;
+    }
+    const steps = [
+        { ms: 2000, kind: "pos", text: face.pos || "" },
+        { ms: 2000, kind: "flag", text: face.flag || "" },
+        { ms: 2000, kind: "club", text: clubTitle(face.club) },
+        { ms: 1000, kind: "black", text: "" }
+    ];
+    if (card) card.hidden = true;
+    intro.hidden = false;
+    box.hidden = false;
+    Sfx.unlock();
+    if (Sfx.poolA) Sfx.poolA();
+    let step = 0;
+    function frame() {
+        const beat = steps[step];
+        intro.className = "pull-intro" + (beat.kind === "black" ? " black" : "");
+        introText.className = beat.kind;
+        introText.textContent = beat.text;
+        step += 1;
+        pullTimer = setTimeout(function () {
+            pullTimer = 0;
+            if (step < steps.length) frame();
+            else {
+                intro.hidden = true;
+                if (card) card.hidden = false;
+            }
+        }, beat.ms);
+    }
+    frame();
+}
+
+function hidePull() {
+    clearPullTimer();
+    const box = get("pullReveal");
+    const intro = get("pullIntro");
+    if (intro) intro.hidden = true;
+    if (box) box.hidden = true;
+}
+
+function futButton(star, onPick) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "fut-card " + futTier(star);
+    const ovr = document.createElement("span");
+    ovr.className = "fut-ovr";
+    ovr.textContent = String(star.ovr || 0);
+    const pos = document.createElement("span");
+    pos.className = "fut-pos";
+    pos.textContent = star.pos || "";
+    const name = document.createElement("b");
+    name.textContent = shown(star);
+    const meta = document.createElement("small");
+    meta.textContent = (star.flag || "") + " " + (star.club || "");
+    btn.appendChild(ovr);
+    btn.appendChild(pos);
+    btn.appendChild(name);
+    btn.appendChild(meta);
+    btn.addEventListener("click", function () { Sfx.click(); onPick(); });
+    return btn;
+}
+
+let draftShowPools = false;
+
+function poolLine(label, pity) {
+    const row = document.createElement("p");
+    row.className = "pool-row";
+    const name = document.createElement("b");
+    name.textContent = label;
+    row.appendChild(name);
+    if (pity) {
+        const left = document.createElement("span");
+        left.textContent = pity;
+        row.appendChild(left);
+    }
+    return row;
+}
+
+function renderDraft() {
+    ensureDraft();
+    const now = dropNow();
+    const pools = draftPools();
+    const kicker = get("draftKicker");
+    const title = get("draftTitle");
+    const hint = get("draftHint");
+    const picks = get("draftPicks");
+    if (kicker) kicker.textContent = t("dropKicker");
+    if (title) title.textContent = t(now.drop.title);
+    if (hint) hint.textContent = player.draftNote || t(now.drop.text);
+    if (!picks) return;
+    picks.textContent = "";
+    const face = pullFace(player.draftLast);
+    if (!face) player.draftLast = null;
+    if (face && !player.draftOffer) {
+        const reveal = document.createElement("div");
+        reveal.className = "drop-reveal";
+        const k = document.createElement("p");
+        k.className = "k";
+        k.textContent = t("draftDrop");
+        const who = document.createElement("p");
+        who.className = "drop-who";
+        who.textContent = (face.flag ? face.flag + " " : "") + face.name;
+        const sub = document.createElement("p");
+        sub.className = "drop-sub";
+        sub.textContent = "Пул " + face.pool + " · " + face.ovr + " " + face.pos + (face.club ? " · " + face.club : "");
+        reveal.appendChild(k);
+        reveal.appendChild(who);
+        reveal.appendChild(sub);
+        picks.appendChild(reveal);
+    }
+    picks.appendChild(poolLine(t("poolA"), t("pityA", { n: player.draftPityA })));
+    picks.appendChild(poolLine(t("poolB"), t("pityB", { n: player.draftPityB })));
+    picks.appendChild(poolLine(t("poolC"), t("poolCsub", { n: pools.C.length })));
+    if (player.draftOffer) {
+        const row = document.createElement("div");
+        row.className = "fut-row";
+        player.draftOffer.ids.forEach(function (id) {
+            const star = starCard(id);
+            if (!star) return;
+            row.appendChild(futButton(star, function () { takeOffer(id); }));
+        });
+        picks.appendChild(row);
+        return;
+    }
+    const spin = document.createElement("button");
+    spin.type = "button";
+    spin.className = "gold";
+    spin.textContent = t("draftSpin", { n: money(DRAFT_SPIN_COST) });
+    spin.addEventListener("click", function () { Sfx.click(); spinDraft(); });
+    picks.appendChild(spin);
+    const phase = document.createElement("p");
+    phase.className = "hint";
+    phase.textContent = t("phaseN", { n: player.phaseTokens });
+    picks.appendChild(phase);
+    const pick5 = document.createElement("button");
+    pick5.type = "button";
+    pick5.textContent = t("pick5");
+    pick5.addEventListener("click", function () { Sfx.click(); openPick(5, 5, "B"); });
+    const pick3 = document.createElement("button");
+    pick3.type = "button";
+    pick3.textContent = t("pick3");
+    pick3.addEventListener("click", function () { Sfx.click(); openPick(3, 12, "A"); });
+    picks.appendChild(pick5);
+    picks.appendChild(pick3);
+    if (player.draftBag.length) {
+        const bagTitle = document.createElement("p");
+        bagTitle.className = "hint";
+        bagTitle.textContent = t("draftBag");
+        picks.appendChild(bagTitle);
+        player.draftBag.forEach(function (item) {
+            const star = starCard(item.id);
+            const row = document.createElement("div");
+            row.className = "bag-row";
+            const name = document.createElement("b");
+            name.textContent = (star ? shown(star) : item.id) + " · " + item.pool;
+            const sell = document.createElement("button");
+            sell.type = "button";
+            sell.textContent = t("draftSell", { n: PHASE_PAY[item.pool] || 1 });
+            sell.addEventListener("click", function () { Sfx.click(); exchangeBag(item.uid); });
+            row.appendChild(name);
+            row.appendChild(sell);
+            picks.appendChild(row);
+        });
+    }
+    const more = document.createElement("button");
+    more.type = "button";
+    more.textContent = t("draftMore");
+    more.addEventListener("click", function () {
+        Sfx.click();
+        draftShowPools = !draftShowPools;
+        renderDraft();
+    });
+    picks.appendChild(more);
+    if (draftShowPools) {
+        ["A", "B", "C"].forEach(function (key) {
+            const line = document.createElement("p");
+            line.className = "hint";
+            line.textContent = key + ": " + pools[key].slice(0, 4).map(shown).join(", ");
+            picks.appendChild(line);
+        });
+    }
 }
 
 function updateHook() {
@@ -2308,6 +3177,11 @@ function load() {
         if (typeof player.loan !== "number") player.loan = 0;
         if (!player.bankPlan) player.bankPlan = player.bank > 0 ? "season" : "";
         if (!player.loanPlan) player.loanPlan = "";
+        if (!player.dropSeen) player.dropSeen = "";
+        if (typeof player.draftTokens !== "number") player.draftTokens = 0;
+        if (!Array.isArray(player.exclusives)) player.exclusives = [];
+        if (!player.draftMark) player.draftMark = "";
+        if (!player.draftRun || typeof player.draftRun !== "object") player.draftRun = null;
         if (typeof player.bankUntil !== "number") player.bankUntil = 0;
         if (typeof player.fame !== "number") player.fame = 50;
         if (typeof player.onlineWins !== "number") player.onlineWins = 0;
@@ -2381,6 +3255,7 @@ function load() {
         if (!player.avatar) {
             player.avatar = player.mode === "club" ? "🏟️" : (AVATARS[player.position] || "⚽");
         }
+        if (!player.tale || typeof player.tale.step !== "number") player.tale = { step: 0, tone: "" };
         if (!Array.isArray(player.squad)) player.squad = [];
         if (!Array.isArray(player.grid)) player.grid = [];
         migrateGkStats(player);
@@ -2994,7 +3869,7 @@ function mateLine(star, club, index) {
     return t(key, { name: shown(star), pos: star.pos || "", club: ui(club) });
 }
 
-function starCard(star, home, mine) {
+function mateCard(star, home, mine) {
     return {
         author: shown(star),
         pos: star.pos,
@@ -3016,7 +3891,7 @@ function mateRoster() {
     function push(star, home, mine) {
         if (!star || !star.id || seen[star.id]) return;
         seen[star.id] = true;
-        authors.push(starCard(star, home, mine));
+        authors.push(mateCard(star, home, mine));
     }
     if (isClub()) squadStars().forEach(function (star) { push(star, club, true); });
     else matesForClub(club).forEach(function (star) { push(star, star.club || club, true); });
@@ -3271,7 +4146,7 @@ function friendRow(who, added) {
     const row = document.createElement("div");
     row.className = "soc-friend";
     const name = document.createElement("b");
-    name.textContent = (who.flag ? who.flag + " " : "") + (who.name || shown(who)) + (who.pos ? " · " + who.pos : "");
+    name.textContent = (who.flag ? who.flag + " " : "") + (who.name || shown(who)) + (who.pos ? " · " + who.pos : "") + (who.exclusive ? " · EX" : "");
     const unread = added ? unreadFor(who.id) : 0;
     if (unread) {
         const dot = document.createElement("i");
@@ -3415,6 +4290,16 @@ function renderFriends(feed) {
 
 function liveFriend(who) {
     if (!who) return who;
+    const ex = exclusiveById(who.id);
+    if (ex) {
+        who.name = shown(ex);
+        who.flag = ex.flag;
+        who.pos = ex.pos;
+        who.ovr = ex.ovr;
+        who.exclusive = true;
+        who.en = ex.en;
+        return who;
+    }
     const star = everyStar().find(function (row) { return row.id === who.id; });
     if (!star) return who;
     who.name = shown(star);
@@ -4367,6 +5252,10 @@ function renderAll() {
     updateBallonUI();
     updateEventCal();
     renderBank();
+    paintStadium();
+    updateDrop();
+    paintTale();
+    maybeTale();
     renderSocial();
     paintUnread();
     maybeCallUp();
@@ -4514,6 +5403,89 @@ function showPanel(id) {
     document.querySelectorAll(".career-tabs button").forEach(function (btn) {
         btn.classList.toggle("on", btn.getAttribute("data-panel") === id);
     });
+}
+
+const STADIUM = [
+    { seats: 2000, gate: 8 },
+    { seats: 9000, gate: 30, cost: 250 },
+    { seats: 22000, gate: 70, cost: 800 },
+    { seats: 48000, gate: 140, cost: 2000 },
+    { seats: 80000, gate: 240, cost: 4500 }
+];
+
+function stadNum(n) {
+    return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+}
+
+function ensureStadium() {
+    if (!player) return;
+    if (!player.stadium || typeof player.stadium.level !== "number") {
+        player.stadium = { level: 0, crowd: 0, pay: 0 };
+    }
+    player.stadium.level = Math.max(0, Math.min(STADIUM.length - 1, player.stadium.level | 0));
+}
+
+function paintStadium() {
+    if (!get("stadBowl") || !player || !player.name) return;
+    ensureStadium();
+    const row = STADIUM[player.stadium.level];
+    const next = STADIUM[player.stadium.level + 1];
+    get("stadBowl").setAttribute("data-lv", String(player.stadium.level));
+    const name = get("stadName");
+    if (name) name.textContent = t("stadName", { club: ui(player.club) });
+    const rank = get("stadRank");
+    if (rank) rank.textContent = t("stad" + player.stadium.level);
+    const seats = get("stadSeats");
+    if (seats) seats.textContent = stadNum(row.seats);
+    const gate = get("stadGate");
+    if (gate) gate.textContent = money(row.gate);
+    const last = get("stadLast");
+    if (last) {
+        last.textContent = player.stadium.crowd
+            ? t("stadLast", { n: stadNum(player.stadium.crowd), pay: money(player.stadium.pay || 0) })
+            : t("stadEmpty");
+    }
+    const btn = get("stadUp");
+    if (!btn) return;
+    if (!next) {
+        btn.disabled = true;
+        btn.textContent = t("stadMax");
+    } else {
+        btn.disabled = false;
+        btn.textContent = t("stadUp", { pay: money(next.cost) });
+    }
+}
+
+function upgradeStadium() {
+    if (!player || !player.name) return;
+    ensureStadium();
+    const next = STADIUM[player.stadium.level + 1];
+    if (!next) return;
+    if ((player.respect || 0) < next.cost) {
+        Sfx.error();
+        addLog(t("stadNeed", { pay: money(next.cost) }));
+        return;
+    }
+    player.respect -= next.cost;
+    player.stadium.level += 1;
+    Sfx.ding();
+    addLog(t("stadBuilt", { name: t("stad" + player.stadium.level) }));
+    updateRespect();
+    paintStadium();
+    save();
+}
+
+function takeStadiumGate(result) {
+    ensureStadium();
+    const row = STADIUM[player.stadium.level];
+    const fill = result === "win" ? 0.92 : result === "draw" ? 0.74 : 0.58;
+    const crowd = Math.round(row.seats * fill);
+    const mul = result === "win" ? 1.25 : result === "draw" ? 1 : 0.7;
+    const pay = Math.max(1, Math.round(row.gate * mul));
+    player.stadium.crowd = crowd;
+    player.stadium.pay = pay;
+    player.respect = (player.respect || 0) + pay;
+    return { crowd: crowd, pay: pay };
 }
 
 const BANK_SAVES = {
@@ -5218,11 +6190,140 @@ function updateOnlineUI() {
     }
 }
 
+let pvpPoll = 0;
+
+function pvpSession() {
+    try {
+        const name = localStorage.getItem("fc-pvp-name") || "";
+        const pin = localStorage.getItem("fc-pvp-pin") || "";
+        if (name && pin) return { name: name, pin: pin };
+    } catch (err) {}
+    return null;
+}
+
+function stopPvpPoll() {
+    if (pvpPoll) {
+        clearInterval(pvpPoll);
+        pvpPoll = 0;
+    }
+}
+
+function pvpLeave() {
+    stopPvpPoll();
+    const session = pvpSession();
+    if (!session) return;
+    fetch("/api/leave", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(session)
+    }).catch(function () {});
+}
+
+function paintPvpGate() {
+    const reg = get("pvpReg");
+    const wait = get("pvpWait");
+    const session = pvpSession();
+    if (reg) reg.hidden = !!session;
+    if (wait) wait.hidden = !session;
+    const hint = get("pvpRegHint");
+    const name = get("pvpName");
+    const pin = get("pvpPin");
+    const enter = get("pvpRegBtn");
+    const hello = get("pvpWaitText");
+    const queueBtn = get("pvpQueueBtn");
+    const botBtn = get("pvpBotBtn");
+    if (hint) hint.textContent = t("pvpRegHint");
+    if (name) name.placeholder = t("pvpName");
+    if (pin) pin.placeholder = t("pvpPin");
+    if (enter) enter.textContent = t("pvpEnter");
+    if (hello && session) hello.textContent = t("pvpHello", { name: session.name });
+    if (queueBtn) queueBtn.textContent = t("pvpQueue");
+    if (botBtn) botBtn.textContent = t("pvpBot");
+}
+
+function pvpEnter() {
+    const nameEl = get("pvpName");
+    const pinEl = get("pvpPin");
+    const name = nameEl ? nameEl.value.trim() : "";
+    const pin = pinEl ? pinEl.value : "";
+    if (name.length < 2 || pin.length < 4) {
+        Sfx.error();
+        get("battleSub").textContent = t("pvpBad");
+        return;
+    }
+    fetch("/api/enter", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: name, pin: pin })
+    }).then(function (res) {
+        if (res.status === 403) {
+            Sfx.error();
+            get("battleSub").textContent = t("pvpWrong");
+            return null;
+        }
+        if (!res.ok) {
+            Sfx.error();
+            get("battleSub").textContent = t("pvpBad");
+            return null;
+        }
+        return res.json();
+    }).then(function (data) {
+        if (!data || !data.ok) return;
+        localStorage.setItem("fc-pvp-name", data.name || name);
+        localStorage.setItem("fc-pvp-pin", pin);
+        paintPvpGate();
+        get("battleSub").textContent = t("pvpHello", { name: data.name || name });
+        Sfx.ding();
+    }).catch(function () {
+        Sfx.error();
+        get("battleSub").textContent = t("pvpOff");
+    });
+}
+
+function pvpQueue() {
+    const session = pvpSession();
+    if (!session) return;
+    const card = myBattleCard();
+    card.pvp = true;
+    fetch("/api/queue", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: session.name, pin: session.pin, card: card })
+    }).then(function (res) {
+        if (!res.ok) throw new Error("queue");
+        return res.json();
+    }).then(function () {
+        get("battleTitle").textContent = t("search");
+        get("battleSub").textContent = t("pvpWait");
+        stopPvpPoll();
+        pvpPoll = setInterval(pvpPollTick, 1200);
+    }).catch(function () {
+        Sfx.error();
+        get("battleSub").textContent = t("pvpOff");
+    });
+}
+
+function pvpPollTick() {
+    const session = pvpSession();
+    const overlay = get("battleOverlay");
+    if (!session || !overlay || overlay.hidden) {
+        stopPvpPoll();
+        return;
+    }
+    const q = "name=" + encodeURIComponent(session.name) + "&pin=" + encodeURIComponent(session.pin);
+    fetch("/api/poll?" + q).then(function (res) { return res.json(); }).then(function (data) {
+        if (!data || data.state !== "found" || !data.rival) return;
+        stopPvpPoll();
+        showOnlineFound(data.rival);
+    }).catch(function () {});
+}
+
 function closeOnlineLobby() {
     if (onlineTimer) {
         clearTimeout(onlineTimer);
         onlineTimer = null;
     }
+    pvpLeave();
     onlineRival = null;
     const overlay = get("battleOverlay");
     if (overlay) overlay.hidden = true;
@@ -5275,8 +6376,8 @@ function openOnlineLobby() {
     get("battleKicker").textContent = t("arena");
     get("battleTitle").textContent = t("search");
     get("battleSub").textContent = t("scan");
+    paintPvpGate();
     Sfx.ding();
-    startOnlineSearch();
 }
 
 function startOnlineSearch() {
@@ -5313,14 +6414,13 @@ function showOnlineFound(rival) {
     if (go) go.hidden = false;
     if (box) box.hidden = true;
     get("battleTitle").textContent = t("foundRival");
-    get("battleSub").textContent = rival.live
-        ? t("friendCard", { o: rival.o })
-        : t("pingOvr", { ping: rival.ping, o: rival.o });
+    get("battleSub").textContent = rival.pvp
+        ? t("pvpTag")
+        : rival.live
+            ? t("friendCard", { o: rival.o })
+            : t("pingOvr", { ping: rival.ping, o: rival.o });
     Sfx.ding();
     if (onlineTimer) clearTimeout(onlineTimer);
-    onlineTimer = setTimeout(function () {
-        if (!get("battleOverlay").hidden && onlineRival) playOnline();
-    }, 900);
 }
 
 function joinOnlineCode() {
@@ -5392,7 +6492,7 @@ function playOnline() {
     const me = myBattleCard();
     const delta = clamp((me.o - rival.o) / 18 + (me.f - (rival.f || 50)) / 160, -0.95, 1.15);
 
-    showAura("match", t("onlineMs", { n: rival.ping }), t("battleWord"), ui(me.n) + " vs " + ui(rival.n), "#a78bfa", 1000);
+    showAura("match", "0'", "0:0", ui(me.n) + " vs " + ui(rival.n), "#a78bfa", 900);
     Sfx.matchKickoff();
 
     let scored = Math.max(0, Math.round(1.25 + delta * 1.45 + Math.random() * 1.4 - 0.35));
@@ -5419,9 +6519,15 @@ function playOnline() {
     const fameGain = result === "win" ? (pen ? 5 : 4) : (pen ? 0 : -1);
     const fameDelta = addFame(fameGain);
     const score = scored + ":" + conceded;
+    const marks = pvpMarks(scored, conceded);
+    marks.forEach(function (row, i) {
+        setTimeout(function () {
+            showAura("match", row.min + "'", row.score, ui(me.n) + " vs " + ui(rival.n), "#a78bfa", 900);
+        }, 700 * (i + 1));
+    });
     const summary = "🌐 " + score + " vs " + ui(rival.n) +
         (pen ? " · " + t("pensShort") + " " + pen.us + ":" + pen.them : "") +
-        (rival.live ? " · " + t("codeTag") : "");
+        (rival.pvp ? " · " + t("pvpTag") : (rival.live ? " · " + t("codeTag") : ""));
 
     setTimeout(function () {
         const last = get("lastMatch");
@@ -5464,7 +6570,29 @@ function playOnline() {
         startRestTicker();
         renderAll();
         save();
-    }, 1000);
+    }, 700 * (marks.length + 1) + 500);
+}
+
+function pvpMarks(scored, conceded) {
+    const events = [];
+    let i;
+    for (i = 0; i < scored; i++) events.push("us");
+    for (i = 0; i < conceded; i++) events.push("them");
+    for (i = events.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        const tmp = events[i];
+        events[i] = events[j];
+        events[j] = tmp;
+    }
+    const mins = [14, 28, 43, 57, 71, 84];
+    let us = 0;
+    let them = 0;
+    if (!events.length) return [{ min: 90, score: "0:0" }];
+    return events.map(function (side, index) {
+        if (side === "us") us += 1;
+        else them += 1;
+        return { min: mins[index] || 88, score: us + ":" + them };
+    });
 }
 
 function startOnlineFromMenu() {
@@ -5762,6 +6890,7 @@ function playMatch(useBribe) {
     if (isCb() && conceded === 0) gained += 12;
     gained += Math.round((fameValue() - 50) / 20);
     player.respect = (player.respect || 0) + Math.max(0, gained);
+    const gate = takeStadiumGate(result);
 
     let fameGain = result === "win" ? 4 : result === "draw" ? 2 : 1;
     if (conceded === 0) fameGain += 2;
@@ -5839,6 +6968,7 @@ function playMatch(useBribe) {
             addLog(t("logMatch", { score: scored + ":" + conceded, opp: opponent }));
         }
         addLog(t("logCash", { pay: money(gained), total: money(player.respect) }));
+        if (gate && gate.pay) addLog(t("stadCash", { n: stadNum(gate.crowd), pay: money(gate.pay) }));
         if (fameDelta) {
             addLog(t(fameDelta > 0 ? "logFameUp" : "logFameDown", { n: fameDelta, rank: fameRank(fameValue()), val: fameValue() }));
         }
@@ -5887,23 +7017,26 @@ function transferTo(club) {
     const steps = list.filter(function (row) {
         return row.required > fromReq && row.required <= club.required;
     });
-    const bonus = stepBonus(club);
+    const path = steps.length ? steps : [club];
+    const bonus = path.reduce(function (sum, row) { return sum + stepBonus(row); }, 0);
     player.club = club.name;
     player.respect = (player.respect || 0) + bonus;
     const peak = isClub() ? club.name === "Финал ЛЧ" : club.name === "Real Madrid";
+    path.forEach(function (row) {
+        const top = isClub() ? row.name === "Финал ЛЧ" : row.name === "Real Madrid";
+        addTitle(top ? (isClub() ? "ucl" : "club") : (isClub() ? "league" : "club"), seasonYear(), row.name);
+    });
     if (peak) {
         Sfx.champ();
         addLog(isClub() ? t("logPeakClub") : t("logPeakPlayer"), "goal");
-        addTitle(isClub() ? "ucl" : "club", seasonYear(), club.name);
         showAura("champ", "+" + money(bonus), ui(club.name), isClub() ? t("peakClubSub") : t("welcome", { city: ui(club.city) }), club.accent, 2800);
     } else {
         Sfx.transferBig(club.required);
         addLog(isClub() ? t("logPromote", { name: ui(club.name) }) : t("logTransfer", { name: ui(club.name), city: ui(club.city) }));
-        addTitle(isClub() ? "league" : "club", seasonYear(), club.name);
         showAura("transfer", "+" + money(bonus), ui(club.name), isClub() ? t("newLeague", { league: ui(club.league) }) : t("welcome", { city: ui(club.city) }), club.color, 2400);
     }
-    if (steps.length > 1) {
-        addLog(t(isClub() ? "logJumpLeague" : "logJump", { n: steps.length, pay: money(bonus) }));
+    if (path.length > 1) {
+        addLog(t(isClub() ? "logJumpLeague" : "logJump", { n: path.length, pay: money(bonus) }));
     }
     addLog(t("logCash", { pay: money(bonus), total: money(player.respect) }));
     const fameDelta = addFame(6);
@@ -6030,6 +7163,10 @@ function releaseStar(star) {
     const index = player.squad.indexOf(star.id);
     if (index < 0) return;
     player.squad.splice(index, 1);
+    if (Array.isArray(player.draftBag)) {
+        player.draftBag = player.draftBag.filter(function (item) { return item.id !== star.id; });
+    }
+    if (player.draftLast && player.draftLast.id === star.id) player.draftLast = null;
     const refund = Math.round(starCost(star.ovr) * 0.4);
     player.respect = (player.respect || 0) + refund;
     const gain = Math.max(1, Math.round((star.ovr - 74) / 5));
@@ -6046,7 +7183,16 @@ function releaseStar(star) {
 
 function squadStars() {
     if (!Array.isArray(player.squad)) return [];
-    return player.squad.map((id) => TRANSFER_STARS.find((s) => s.id === id)).filter(Boolean);
+    return player.squad.map(function (id) { return starCard(id); }).filter(Boolean);
+}
+
+function grantSquad(star) {
+    if (!isClub() || !star || !star.id) return false;
+    if (!Array.isArray(player.squad)) player.squad = [];
+    if (player.squad.indexOf(star.id) >= 0) return false;
+    if (player.squad.length >= SQUAD_XI + SQUAD_BENCH) return false;
+    player.squad.push(star.id);
+    return true;
 }
 
 function onBench() {
@@ -6077,20 +7223,20 @@ function lineupOf(stars) {
     });
     function claim(pool, slot, minFit, minOvr) {
         if (slot.star) return;
-        let pick = null;
+            let pick = null;
         let best = -1;
         pool.forEach(function (star) {
             if (taken[star.id] || benchSet[star.id] || star.ovr < minOvr) return;
             const fit = slotScore(slot.pos, star.pos);
             if (fit < minFit) return;
             const score = star.ovr + (fit === 2 ? 6 : 0);
-            if (score > best) {
-                best = score;
-                pick = star;
-            }
-        });
+                if (score > best) {
+                    best = score;
+                    pick = star;
+                }
+            });
         if (!pick) return;
-        taken[pick.id] = true;
+                taken[pick.id] = true;
         slot.star = pick;
     }
     const pinned = stars.filter(function (star) { return pinSet[star.id]; });
@@ -6108,7 +7254,7 @@ function toggleSquadRole(starId) {
     if (!isClub() || !Array.isArray(player.squad) || player.squad.indexOf(starId) < 0) return;
     if (!Array.isArray(player.xiPins)) player.xiPins = [];
     if (!Array.isArray(player.benchPins)) player.benchPins = [];
-    const star = TRANSFER_STARS.find(function (row) { return row.id === starId; });
+    const star = starCard(starId);
     if (!star) return;
     const xi = clubLineup();
     const starting = xi.slots.some(function (slot) { return slot.star && slot.star.id === starId; });
@@ -6117,7 +7263,7 @@ function toggleSquadRole(starId) {
     if (starting) {
         player.benchPins.push(starId);
         addLog(t("logToBench", { name: shown(star) }));
-    } else {
+            } else {
         const slot = xi.slots.slice().sort(function (a, b) {
             return slotScore(b.pos, star.pos) - slotScore(a.pos, star.pos);
         }).find(function (row) { return slotScore(row.pos, star.pos) >= 1 && !row.star; })
@@ -6153,35 +7299,35 @@ function slotScore(slotPos, playerPos) {
 }
 
 function squadRow(star, onTheBench) {
-    const row = document.createElement("div");
+        const row = document.createElement("div");
     row.className = "market-row owned" + (onTheBench ? " bench-row" : "");
-    const pos = document.createElement("span");
-    pos.className = "pos";
-    pos.textContent = star.pos;
-    row.appendChild(pos);
-    const who = document.createElement("span");
-    who.className = "who";
-    who.textContent = star.flag + " " + shown(star) + " ";
-    const club = document.createElement("small");
-    club.textContent = star.club + (onTheBench ? " · " + t("benchTag") : "");
-    who.appendChild(club);
-    row.appendChild(who);
-    const ovn = document.createElement("span");
-    ovn.className = "ovn";
-    ovn.textContent = String(star.ovr);
-    row.appendChild(ovn);
+        const pos = document.createElement("span");
+        pos.className = "pos";
+        pos.textContent = star.pos;
+        row.appendChild(pos);
+        const who = document.createElement("span");
+        who.className = "who";
+    who.textContent = (star.flag ? star.flag + " " : "") + (shown(star) || star.name || "");
+        const club = document.createElement("small");
+    club.textContent = (star.club || star.home || "") + (onTheBench ? " · " + t("benchTag") : "");
+        who.appendChild(club);
+        row.appendChild(who);
+        const ovn = document.createElement("span");
+        ovn.className = "ovn";
+        ovn.textContent = String(star.ovr);
+        row.appendChild(ovn);
     const role = document.createElement("button");
     role.type = "button";
     role.className = "role";
     role.setAttribute("data-role", star.id);
     role.textContent = onTheBench ? t("toXi") : t("toBench");
     row.appendChild(role);
-    const sell = document.createElement("button");
-    sell.type = "button";
-    sell.className = "sell";
-    sell.setAttribute("data-sell", star.id);
+        const sell = document.createElement("button");
+        sell.type = "button";
+        sell.className = "sell";
+        sell.setAttribute("data-sell", star.id);
     sell.textContent = t("sell");
-    row.appendChild(sell);
+        row.appendChild(sell);
     return row;
 }
 
@@ -6198,6 +7344,24 @@ function updateSquad() {
     if (!isClub()) {
         if (benchBox) benchBox.hidden = true;
         return;
+    }
+    ensureDraft();
+    let draftedIn = false;
+    (player.draftBag || []).forEach(function (item) {
+        const star = starCard(item.id);
+        if (star && grantSquad(star)) draftedIn = true;
+    });
+    if (player.draftLast) {
+        const last = starCard(player.draftLast.id) || player.draftLast;
+        if (last && last.name && grantSquad(last)) draftedIn = true;
+    }
+    if (draftedIn) save();
+    const voucherCount = get("voucherCount");
+    const voucherBuy = get("voucherBuy");
+    if (voucherCount) voucherCount.textContent = t("voucherHave", { n: player.draftTokens });
+    if (voucherBuy) {
+        voucherBuy.textContent = t("voucherBuy", { n: money(VOUCHER_COST) });
+        voucherBuy.disabled = (player.respect || 0) < VOUCHER_COST;
     }
     const xi = clubLineup();
     const starters = xi.slots.map(function (slot) { return slot.star; }).filter(Boolean);
@@ -6226,10 +7390,10 @@ function updateSquad() {
         if (slot.star) {
             cell.setAttribute("data-role", slot.star.id);
             const name = document.createElement("b");
-            name.textContent = slot.star.flag + " " + shown(slot.star);
+            name.textContent = (slot.star.flag ? slot.star.flag + " " : "") + (shown(slot.star) || slot.star.name || "");
             cell.appendChild(name);
             const meta = document.createElement("small");
-            meta.textContent = slot.star.pos + " " + slot.star.ovr;
+            meta.textContent = (slot.star.pos || "") + " " + (slot.star.ovr || "");
             cell.appendChild(meta);
         } else {
             cell.textContent = slot.pos;
@@ -6245,15 +7409,16 @@ function updateSquad() {
             chip.className = "bench-chip" + (star.ovr < 78 ? " low" : "");
             chip.setAttribute("data-role", star.id);
             const name = document.createElement("b");
-            name.textContent = star.flag + " " + shown(star);
+            name.textContent = (star.flag ? star.flag + " " : "") + (shown(star) || star.name || "");
             const meta = document.createElement("small");
-            meta.textContent = star.pos + " · " + star.ovr;
+            meta.textContent = (star.pos || "") + " · " + (star.ovr || "");
             chip.appendChild(name);
             chip.appendChild(meta);
             bench.appendChild(chip);
         });
     }
 
+    pitch.hidden = false;
     if (!starters.length && !xi.bench.length) {
         const empty = document.createElement("div");
         empty.className = "market-row";
@@ -6266,13 +7431,73 @@ function updateSquad() {
     xi.bench.forEach(function (star) { box.appendChild(squadRow(star, true)); });
 }
 
+const VOUCHER_COST = 150;
+const DRAFT_SHOP = [
+    { n: 1, cost: 150 },
+    { n: 5, cost: 750 },
+    { n: 10, cost: 1500 }
+];
+
+function buyVouchers(n, cost) {
+    if (!player || !isClub()) return;
+    ensureDraft();
+    if ((player.respect || 0) < cost) return;
+    player.respect -= cost;
+    player.draftTokens += n;
+    save();
+    updateRespect();
+    addLog(t("logVoucher", { n: n, cost: money(cost) }));
+    updateMarket();
+    updateSquad();
+    updateDrop();
+    Sfx.ding();
+}
+
 function updateMarket() {
     const box = get("market");
     const hint = get("marketHint");
+    const posTabs = get("marketPos");
     if (!box) return;
     box.innerHTML = "";
+    if (posTabs) posTabs.hidden = marketFilter === "drafts";
     if (!isClub()) return;
     if (!Array.isArray(player.squad)) player.squad = [];
+    document.querySelectorAll("#marketTabs [data-tier]").forEach((btn) => {
+        btn.classList.toggle("on", btn.getAttribute("data-tier") === marketFilter);
+    });
+    if (marketFilter === "drafts") {
+        ensureDraft();
+        if (hint) hint.textContent = t("draftShop", { n: player.draftTokens, cash: money(player.respect) });
+        DRAFT_SHOP.forEach(function (offer) {
+            const row = document.createElement("div");
+            row.className = "market-row" + ((player.respect || 0) < offer.cost ? " locked" : "");
+            const who = document.createElement("span");
+            who.className = "who";
+            who.textContent = offer.n === 1 ? t("draftPack1") : t("draftPack", { n: offer.n });
+            row.appendChild(who);
+            if ((player.respect || 0) >= offer.cost) {
+                const button = document.createElement("button");
+                button.type = "button";
+                button.setAttribute("data-voucher", String(offer.n));
+                button.setAttribute("data-cost", String(offer.cost));
+                button.textContent = money(offer.cost);
+                row.appendChild(button);
+            } else {
+                const mark = document.createElement("b");
+                mark.textContent = money(offer.cost);
+                row.appendChild(mark);
+            }
+            box.appendChild(row);
+        });
+        const open = document.createElement("button");
+        open.type = "button";
+        open.className = "gold";
+        open.id = "marketDraftOpen";
+        open.textContent = t("draftOpen");
+        open.addEventListener("click", function () { Sfx.click(); openDraft(); });
+        box.appendChild(open);
+        return;
+    }
     const list = TRANSFER_STARS.filter((star) => {
         const tierOk = marketFilter === "all" || star.tier === marketFilter || (marketFilter === "leg" && star.id === "cr7");
         const posOk = marketPos === "all" || star.pos === marketPos;
@@ -6281,9 +7506,6 @@ function updateMarket() {
     if (hint) {
         hint.textContent = t("marketCount", { n: list.length, sq: player.squad.length, cash: money(player.respect) });
     }
-    document.querySelectorAll("#marketTabs [data-tier]").forEach((btn) => {
-        btn.classList.toggle("on", btn.getAttribute("data-tier") === marketFilter);
-    });
     document.querySelectorAll("#marketPos [data-pos]").forEach((btn) => {
         btn.classList.toggle("on", btn.getAttribute("data-pos") === marketPos);
     });
@@ -6895,6 +8117,11 @@ function bind() {
     const sponsorList = get("sponsorList");
     if (sponsorList) {
         sponsorList.addEventListener("click", function (event) {
+            const drop = event.target.closest("[data-drop]");
+            if (drop) {
+                dropSponsor(drop.getAttribute("data-drop"));
+                return;
+            }
             const btn = event.target.closest("[data-deal]");
             if (!btn || btn.disabled) return;
             signSponsor(btn.getAttribute("data-deal"));
@@ -6978,6 +8205,8 @@ function bind() {
             debtOverlay.hidden = true;
         });
     }
+    const stadUp = get("stadUp");
+    if (stadUp) stadUp.addEventListener("click", function () { Sfx.click(); upgradeStadium(); });
     const tabs = get("careerTabs");
     if (tabs) {
         tabs.addEventListener("click", function (event) {
@@ -6997,6 +8226,17 @@ function bind() {
         playOnline();
     });
     get("joinBattleBtn").addEventListener("click", joinOnlineCode);
+    const pvpRegBtn = get("pvpRegBtn");
+    const pvpQueueBtn = get("pvpQueueBtn");
+    const pvpBotBtn = get("pvpBotBtn");
+    if (pvpRegBtn) pvpRegBtn.addEventListener("click", function () { Sfx.click(); pvpEnter(); });
+    if (pvpQueueBtn) pvpQueueBtn.addEventListener("click", function () { Sfx.click(); pvpQueue(); });
+    if (pvpBotBtn) pvpBotBtn.addEventListener("click", function () {
+        Sfx.click();
+        if (onlineTimer) clearTimeout(onlineTimer);
+        stopPvpPoll();
+        showOnlineFound(pickOnlineRival());
+    });
     get("copyBattleCode").addEventListener("click", copyBattleCode);
     get("friendBattleCode").addEventListener("keydown", function (event) {
         if (event.key === "Enter") joinOnlineCode();
@@ -7027,6 +8267,12 @@ function bind() {
     const marketBox = get("market");
     if (marketBox) {
         marketBox.addEventListener("click", function (event) {
+            const voucher = event.target.closest("[data-voucher]");
+            if (voucher) {
+                Sfx.click();
+                buyVouchers(Number(voucher.getAttribute("data-voucher")), Number(voucher.getAttribute("data-cost")));
+                return;
+            }
             const btn = event.target.closest("[data-star]");
             if (!btn) return;
             const star = TRANSFER_STARS.find((s) => s.id === btn.getAttribute("data-star"));
@@ -7041,11 +8287,11 @@ function bind() {
         squadCard.addEventListener("click", function (event) {
             const sell = event.target.closest("[data-sell]");
             if (sell) {
-                const star = TRANSFER_STARS.find((s) => s.id === sell.getAttribute("data-sell"));
-                if (star) {
-                    Sfx.click();
-                    releaseStar(star);
-                }
+                const star = starCard(sell.getAttribute("data-sell"));
+            if (star) {
+                Sfx.click();
+                releaseStar(star);
+            }
                 return;
             }
             const role = event.target.closest("[data-role]");
@@ -7118,7 +8364,11 @@ window.onLangChange = function () {
         if (typeof renderCreatePicks === "function") renderCreatePicks();
     }
     updateContinueBtn();
-    if (player && player.name) renderAll();
+    if (player && player.name) {
+        renderAll();
+        const draftBox = get("draftOverlay");
+        if (draftBox && !draftBox.hidden) renderDraft();
+    }
     if (typeof renderAuction === "function") renderAuction();
 };
 
@@ -7141,12 +8391,16 @@ document.addEventListener("DOMContentLoaded", function () {
     const styleBtn = get("styleBtn");
     const stylePanel = get("stylePanel");
     if (styleBtn && stylePanel) {
+        let styleHold = 0;
         styleBtn.addEventListener("click", function (event) {
+            event.preventDefault();
             event.stopPropagation();
             Sfx.click();
             stylePanel.hidden = !stylePanel.hidden;
+            if (!stylePanel.hidden) styleHold = Date.now() + 450;
         });
         stylePanel.addEventListener("click", function (event) {
+            event.stopPropagation();
             const btn = event.target.closest("[data-style]");
             if (!btn) return;
             event.stopPropagation();
@@ -7154,9 +8408,47 @@ document.addEventListener("DOMContentLoaded", function () {
             applyStyle(btn.getAttribute("data-style"));
             stylePanel.hidden = true;
         });
-        document.addEventListener("click", function () { stylePanel.hidden = true; });
+        const draftOpen = get("draftOpen");
+        const draftClose = get("draftClose");
+        if (draftOpen) draftOpen.addEventListener("click", function () { Sfx.click(); openDraft(); });
+        const taleOpen = get("taleOpen");
+        const taleActs = get("taleActs");
+        const taleLater = get("taleLater");
+        if (taleOpen) taleOpen.addEventListener("click", function () { Sfx.click(); openTale(); });
+        if (taleActs) taleActs.addEventListener("click", function (event) {
+            const btn = event.target.closest("[data-pick]");
+            if (!btn) return;
+            Sfx.click();
+            pickTale(btn.getAttribute("data-pick"));
+        });
+        if (taleLater) taleLater.addEventListener("click", function () { Sfx.click(); closeTale(); });
+        const liveDraft = get("liveDraft");
+        if (liveDraft) liveDraft.addEventListener("click", function () { Sfx.click(); openDraft(); });
+        const voucherBuy = get("voucherBuy");
+        if (voucherBuy) voucherBuy.addEventListener("click", function () {
+            Sfx.click();
+            buyVouchers(1, VOUCHER_COST);
+        });
+        if (draftClose) draftClose.addEventListener("click", function () { Sfx.click(); closeDraft(); });
+        const pullReveal = get("pullReveal");
+        const pullOk = get("pullOk");
+        if (pullReveal) pullReveal.addEventListener("click", function (event) {
+            if (event.target === pullReveal || event.target === pullOk) hidePull();
+        });
+        if (pullOk) pullOk.addEventListener("click", function () { Sfx.click(); hidePull(); });
+        document.addEventListener("click", function (event) {
+            if (Date.now() < styleHold) return;
+            if (event.target.closest("#stylePanel") || event.target.closest("#styleBtn")) return;
+            stylePanel.hidden = true;
+        });
     }
     syncMuteButton();
+    try {
+        localStorage.removeItem("fc-admin");
+        localStorage.removeItem("fc-pool-a");
+    } catch (e) {}
+    paintLive();
+    setInterval(paintLive, 1000);
     renderRecords();
     loadAuction();
     load();

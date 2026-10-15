@@ -335,6 +335,17 @@ const Sfx = (() => {
     window.addEventListener("pagehide", halt);
     window.addEventListener("freeze", halt);
 
+    function poolA() {
+        if (!ensure() || muted) return;
+        const t = ctx.currentTime;
+        osc("sine", 98, t, 2, 0.07);
+        [349, 440, 523, 698].forEach(function (freq, i) {
+            osc("triangle", freq, t + i * 0.32, 0.5, 0.13);
+        });
+        osc("sine", 1046, t + 1.35, 0.55, 0.08);
+        crowd(t, 1.9, 0.14);
+    }
+
     function injury() {
         if (!ensure() || muted) return;
         const t = ctx.currentTime;
@@ -345,7 +356,7 @@ const Sfx = (() => {
 
     return {
         click, start, train, rest, whistle, goal, miss,
-        transferBig, matchKickoff, champ, ding, suspense, error, injury,
+        transferBig, matchKickoff, champ, ding, suspense, error, injury, poolA,
         logo, themeStart, themeStop, halt, wake,
         unlock, setMuted, isMuted
     };

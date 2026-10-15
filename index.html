@@ -39,7 +39,7 @@
       #studioSplash .studio-tap{margin:28px 0 0;letter-spacing:.34em;text-transform:uppercase;font-size:11px;font-weight:800;color:#d4af37}
       #studioSplash .studio-line{width:min(220px,46vw);height:1px;margin:10px 0 6px;background:linear-gradient(90deg,transparent,#d4af37,transparent)}
     </style>
-    <link rel="stylesheet" href="style.css?v=94">
+    <link rel="stylesheet" href="style.css?v=128">
 </head>
 <body>
 
@@ -88,6 +88,17 @@
             <div class="battle-side" id="battleYou"></div>
             <b>VS</b>
             <div class="battle-side" id="battleThem"></div>
+        </div>
+        <div id="pvpReg" hidden>
+            <p class="hint" id="pvpRegHint">Имя и пароль. Другой игрок в этой сети найдёт тебя по ним.</p>
+            <input id="pvpName" type="text" maxlength="16" placeholder="Имя" autocomplete="username">
+            <input id="pvpPin" type="password" maxlength="12" placeholder="Пароль, от 4 знаков" autocomplete="current-password">
+            <button type="button" id="pvpRegBtn" class="gold">Войти</button>
+        </div>
+        <div id="pvpWait" hidden>
+            <p class="hint" id="pvpWaitText"></p>
+            <button type="button" id="pvpQueueBtn" class="gold">Искать бой</button>
+            <button type="button" id="pvpBotBtn">Тренировка с ботом</button>
         </div>
         <div class="battle-code" id="battleCodeBox">
             <p class="hint" data-i18n="yourCode">Твой код — друг играет против твоей карточки</p>
@@ -142,6 +153,40 @@
             <p id="socialDetailPost"></p>
             <div id="socialDetailList"></div>
         </div>
+    </div>
+</div>
+
+<div id="pullReveal" class="pull-reveal" hidden>
+    <div class="pull-intro" id="pullIntro" hidden>
+        <p id="pullIntroText"></p>
+    </div>
+    <div class="pull-card">
+        <p class="k" id="pullKicker">ВЫПАЛ</p>
+        <p class="pool" id="pullPool"></p>
+        <p class="ovr" id="pullOvr"></p>
+        <p class="name" id="pullName"></p>
+        <p class="meta" id="pullMeta"></p>
+        <button type="button" id="pullOk">ОК</button>
+    </div>
+</div>
+
+<div id="draftOverlay" class="cal-overlay" hidden>
+    <div class="cal-window draft-window">
+        <p class="cal-kicker" id="draftKicker">ДРАФТ</p>
+        <h2 id="draftTitle">Драфт</h2>
+        <p class="hint" id="draftHint"></p>
+        <div class="draft-picks" id="draftPicks"></div>
+        <button type="button" id="draftClose" class="back-btn" data-i18n="calClose">Закрыть</button>
+    </div>
+</div>
+
+<div id="taleOverlay" class="cal-overlay" hidden>
+    <div class="cal-window">
+        <p class="cal-kicker" id="taleKicker">СЮЖЕТ</p>
+        <h2 id="taleTitle">Критик</h2>
+        <p class="hint" id="taleText"></p>
+        <div class="tale-acts" id="taleActs"></div>
+        <button type="button" id="taleLater" class="back-btn">Позже</button>
     </div>
 </div>
 
@@ -298,6 +343,18 @@
             <b id="energyDisplay">100</b>
         </div>
     </div>
+    <div class="live-upd" id="liveUpd">
+        <div class="live-top">
+            <span id="liveKicker">ОБНОВЛЕНИЕ</span>
+            <em id="liveLeft">4д 00:00:00</em>
+        </div>
+        <b id="liveTitle">Last Dance</b>
+        <small id="liveText"></small>
+        <p class="live-only" id="liveOnly">Эксклюзивные карты только эти 4 дня</p>
+        <div class="live-cards" id="liveCards"></div>
+        <button type="button" id="liveDraft" class="gold" data-i18n="draftOpen">Открыть драфт</button>
+    </div>
+
     <div class="hook" id="hookBar">
         <span id="hookKicker">LIVE</span>
         <b id="hookText">Ещё один матч — и ты ближе к топу</b>
@@ -309,10 +366,25 @@
         <button type="button" data-panel="match" data-i18n="tabMatch">Матч</button>
         <button type="button" data-panel="club" id="tabClub">Клубы</button>
         <button type="button" data-panel="bank" data-i18n="tabBank">Банк</button>
+        <button type="button" data-panel="stad" data-i18n="tabStad">Стадион</button>
         <button type="button" data-panel="more" data-i18n="tabMore">Ещё</button>
     </nav>
 
     <div class="panel on" data-panel="home">
+    <div class="card drop-card" id="dropCard">
+        <p class="drop-kicker" id="dropKicker">ОБНОВЛЕНИЕ</p>
+        <h2 id="dropTitle">Лучшие связки</h2>
+        <p class="hint" id="dropText"></p>
+        <div class="live-cards" id="dropCards"></div>
+        <p class="hint" id="dropNext"></p>
+        <button type="button" id="draftOpen" class="gold" data-i18n="draftOpen">Открыть драфт</button>
+    </div>
+    <div class="card tale-card" id="taleCard" hidden>
+        <p class="drop-kicker">СЮЖЕТ</p>
+        <h2 id="taleCardTitle">Критик</h2>
+        <p class="hint" id="taleCardText"></p>
+        <button type="button" id="taleOpen" class="gold">Ответить критику</button>
+    </div>
     <div class="card" id="bodyCard">
         <h2 data-i18n="body">Тело</h2>
         <p class="hint" id="bodyMapHint">Цел. Травма подсветит зону.</p>
@@ -435,6 +507,10 @@
     <div class="panel" data-panel="club">
     <div class="card" id="squadCard" hidden>
         <h2 data-i18n="squad">Состав</h2>
+        <div class="voucher-bar" id="voucherBar">
+            <b id="voucherCount">Ваучеры: 0</b>
+            <button type="button" id="voucherBuy">Купить · $150</button>
+        </div>
         <p class="hint" id="squadHint" data-i18n="squadHint">Своих игроков пока нет. Купи в трансферном окне.</p>
         <div class="pitch" id="squadPitch"></div>
         <div class="bench-box" id="benchBox" hidden>
@@ -453,6 +529,7 @@
             <button type="button" data-tier="rpl" data-i18n="rpl">РПЛ</button>
             <button type="button" data-tier="eu" data-i18n="europe">Европа</button>
             <button type="button" data-tier="leg" data-i18n="legends">Легенды</button>
+            <button type="button" data-tier="drafts" data-i18n="marketDrafts">Драфты</button>
         </div>
         <div class="pos-tabs" id="marketPos">
             <button type="button" data-pos="all" class="on" data-i18n="all">Все</button>
@@ -473,6 +550,20 @@
     <div class="card">
         <h2 id="transfersTitle">Трансферы</h2>
         <div id="clubs"></div>
+    </div>
+    </div>
+
+    <div class="panel" data-panel="stad">
+    <div class="card stad-card">
+        <h2 id="stadName">Стадион</h2>
+        <p class="hint" id="stadRank"></p>
+        <div class="bowl" id="stadBowl" data-lv="0">
+            <div class="bowl-pitch"></div>
+        </div>
+        <p class="bank-line"><span data-i18n="stadSeats">Места</span> <b id="stadSeats">2 000</b></p>
+        <p class="bank-line"><span data-i18n="stadGate">Касса за матч</span> <b id="stadGate">$8</b></p>
+        <p class="hint" id="stadLast"></p>
+        <button type="button" id="stadUp" class="gold">Расширить</button>
     </div>
     </div>
 
@@ -613,8 +704,8 @@
     </div>
 </div>
 
-<script src="audio.js?v=94" defer></script>
-<script src="loc.js?v=94" defer></script>
-<script src="game.js?v=94" defer></script>
+<script src="audio.js?v=128" defer></script>
+<script src="loc.js?v=128" defer></script>
+<script src="game.js?v=128" defer></script>
 </body>
 </html>
