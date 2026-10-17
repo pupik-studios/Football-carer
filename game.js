@@ -255,8 +255,8 @@ const NATIONS = [
     { id: "TR", flag: "🇹🇷", name: "Турция", nameEn: "Turkey", city: "Стамбул", cityEn: "Istanbul" }
 ];
 
-const PLAYER_AVATARS = ["p0", "p1", "p2", "p3", "p4", "p5", "p6", "p7", "p8", "p9", "p10", "p11"];
 const OLD_AVATARS = ["⚽", "😎", "🧔", "🦁", "🐺", "🦅", "🔥", "👑", "🧊", "💫", "🎯", "🧤", "🛡️", "👦", "🥷"];
+const PLAYER_AVATARS = OLD_AVATARS;
 
 function avatarIndex(value) {
     const m = /^p(\d+)$/.exec(String(value || ""));
@@ -269,22 +269,51 @@ function avatarIndex(value) {
     return h;
 }
 
-function portraitSvg(n) {
+function portraitSvg(n, wear) {
     n = Math.abs(n | 0) % 12;
+    wear = wear || {};
     const skin = ["#f3d2b5", "#e7b48a", "#c68642", "#8d5524", "#f6d7c3", "#a86b45"][n % 6];
-    const hair = ["#1c1c1c", "#4a2c17", "#c9a227", "#2c1810", "#6b4423", "#d9d9d9", "#111111", "#7a1f1f"][n % 8];
-    const shirt = ["#163a5f", "#9b1c1c", "#14532d", "#f4f4f4", "#1f2937", "#b45309", "#312e81", "#0f766e"][n % 8];
+    const hair = (wear.hairInk) || ["#1c1c1c", "#4a2c17", "#c9a227", "#2c1810", "#6b4423", "#d9d9d9", "#111111", "#7a1f1f"][n % 8];
+    const shirt = (wear.shirtInk) || ["#163a5f", "#9b1c1c", "#14532d", "#f4f4f4", "#1f2937", "#b45309", "#312e81", "#0f766e"][n % 8];
+    const boots = wear.bootInk || "";
+    const sole = wear.soleInk || boots;
     const beard = n % 4 === 0;
-    const fringe = n % 3 !== 2;
+    const style = wear.hairStyle || (n % 3 !== 2 ? "fringe" : "short");
+    let hairSvg = "";
+    if (style === "mohawk") hairSvg = '<path d="M29 6h6c1 8 1 18 0 24h-6c-1-6-1-16 0-24z" fill="' + hair + '"/>';
+    else if (style === "curls") hairSvg = '<circle cx="22" cy="20" r="6" fill="' + hair + '"/><circle cx="32" cy="14" r="7" fill="' + hair + '"/><circle cx="42" cy="20" r="6" fill="' + hair + '"/>';
+    else if (style === "long") hairSvg = '<path d="M16 26c0-16 8-20 16-20s16 4 16 20v16h-6V30c-2-6-6-8-10-8s-8 2-10 8v12h-6z" fill="' + hair + '"/>';
+    else if (style === "fringe") hairSvg = '<path d="M16 28c1-14 8-20 16-20s15 6 16 20c-4-7-10-9-16-9s-12 2-16 9z" fill="' + hair + '"/>';
+    else if (style !== "bald") hairSvg = '<path d="M18 22c2-8 8-12 14-12s12 4 14 12c-6-3-22-3-28 0z" fill="' + hair + '"/>';
+    const cap = wear.capInk
+        ? '<path d="M16 22h32v7H16z" fill="' + wear.capInk + '"/><path d="M42 24h12l-2 5H42z" fill="' + wear.capInk + '"/>'
+        : "";
+    const stripe = wear.stripeInk ? '<rect x="0" y="50" width="64" height="4" fill="' + wear.stripeInk + '"/>' : "";
+    const sleeve = wear.sleeve === "long"
+        ? '<rect x="0" y="36" width="14" height="22" rx="3" fill="' + shirt + '"/><rect x="50" y="36" width="14" height="22" rx="3" fill="' + shirt + '"/>'
+        : "";
+    const sockH = wear.sockLen === "long" ? 16 : wear.sockLen === "short" ? 4 : 9;
+    const sockSvg = wear.sockInk
+        ? '<rect x="18" y="' + (62 - sockH) + '" width="10" height="' + sockH + '" fill="' + wear.sockInk + '"/><rect x="36" y="' + (62 - sockH) + '" width="10" height="' + sockH + '" fill="' + wear.sockInk + '"/>'
+        + (wear.shin ? '<rect x="19" y="' + (60 - Math.min(sockH, 8)) + '" width="8" height="6" fill="#d6d3d1" opacity="0.9"/><rect x="37" y="' + (60 - Math.min(sockH, 8)) + '" width="8" height="6" fill="#d6d3d1" opacity="0.9"/>' : "")
+        : "";
+    const bootSvg = boots
+        ? '<ellipse cx="24" cy="61" rx="8" ry="3" fill="' + boots + '"/><ellipse cx="42" cy="61" rx="8" ry="3" fill="' + boots + '"/><rect x="17" y="62" width="14" height="2" fill="' + sole + '"/><rect x="35" y="62" width="14" height="2" fill="' + sole + '"/>'
+        : "";
     return '<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">'
         + '<rect width="64" height="64" fill="' + shirt + '"/>'
         + '<path d="M6 64c6-16 14-22 26-22s20 6 26 22z" fill="' + shirt + '"/>'
+        + sleeve
+        + stripe
+        + sockSvg
         + '<circle cx="32" cy="30" r="16" fill="' + skin + '"/>'
-        + (fringe ? '<path d="M16 28c1-14 8-20 16-20s15 6 16 20c-4-7-10-9-16-9s-12 2-16 9z" fill="' + hair + '"/>' : '<path d="M18 22c2-8 8-12 14-12s12 4 14 12c-6-3-22-3-28 0z" fill="' + hair + '"/>')
+        + hairSvg
+        + cap
         + '<circle cx="26" cy="31" r="1.7" fill="#1a1a1a"/>'
         + '<circle cx="38" cy="31" r="1.7" fill="#1a1a1a"/>'
         + '<path d="M28 38c2.2 2 6 2 8.2 0" fill="none" stroke="#6b3f2a" stroke-width="1.3" stroke-linecap="round"/>'
-        + (beard ? '<path d="M22 36c2 11 18 11 20 0" fill="' + hair + '" opacity="0.9"/>' : "")
+        + (beard && style !== "bald" ? '<path d="M22 36c2 11 18 11 20 0" fill="' + hair + '" opacity="0.9"/>' : "")
+        + bootSvg
         + "</svg>";
 }
 
@@ -299,15 +328,540 @@ function crestSvg(seed) {
         + "</svg>";
 }
 
-function faceMarkup(value, asClub) {
-    if (asClub) return crestSvg(socSeed(String(value || "club")));
-    return portraitSvg(avatarIndex(value));
+function skinInk() {
+    const s = player && player.skin;
+    return typeof SKIN_TONES !== "undefined" && SKIN_TONES.indexOf(s) >= 0 ? s : "#e7b48a";
+}
+
+function headSvg(wear, skin) {
+    wear = wear || {};
+    const skinC = skin || "#e7b48a";
+    const hair = wear.hairInk || "#1c1c1c";
+    const style = wear.hairStyle || "short";
+    let top = "";
+    if (wear.capInk) {
+        top = '<path d="M15 33c1-15 8-20 17-20s16 5 17 20v8H15z" fill="' + wear.capInk + '" stroke="#111" stroke-width="1.2"/>'
+            + '<path d="M44 35h18l-3 8H44z" fill="' + wear.capInk + '" stroke="#111" stroke-width="1.2"/>';
+    } else if (style === "bald") {
+        top = "";
+    } else if (style === "mohawk") {
+        top = '<path d="M29 8h6c1 8 1 16 0 22h-6c-1-6-1-14 0-22z" fill="' + hair + '"/>';
+    } else if (style === "curls") {
+        top = '<circle cx="20" cy="24" r="6" fill="' + hair + '"/><circle cx="32" cy="16" r="7" fill="' + hair + '"/><circle cx="44" cy="24" r="6" fill="' + hair + '"/>';
+    } else if (style === "long") {
+        top = '<path d="M16 30c0-16 8-20 16-20s16 4 16 20v8h-5v-6c-2-6-6-8-11-8s-9 2-11 8v6h-5z" fill="' + hair + '"/>';
+    } else if (style === "fringe") {
+        top = '<path d="M16 34c1-16 8-22 16-22s15 6 16 22c-4-8-10-10-16-10s-12 2-16 10z" fill="' + hair + '"/>';
+    } else {
+        top = '<path d="M18 28c2-10 8-14 14-14s12 4 14 14c-6-4-22-4-28 0z" fill="' + hair + '"/>';
+    }
+    return '<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">'
+        + '<circle cx="32" cy="36" r="16" fill="' + skinC + '"/>'
+        + '<rect x="26" y="50" width="12" height="14" fill="' + skinC + '"/>'
+        + top
+        + '<circle cx="26" cy="36" r="1.6" fill="#1a1a1a"/>'
+        + '<circle cx="38" cy="36" r="1.6" fill="#1a1a1a"/>'
+        + '<path d="M28 43c2 2 6 2 8 0" fill="none" stroke="#6b3f2a" stroke-width="1.2" stroke-linecap="round"/>'
+        + "</svg>";
+}
+
+const FACE_PEOPLE = ["👨", "👦", "🧔"];
+const HAIR_TONES = [
+    { id: "own" },
+    { id: "black", ink: "#1c1917" },
+    { id: "brown", ink: "#6b3a1f" },
+    { id: "blond", ink: "#f0d078" },
+    { id: "red", ink: "#e04b2a" },
+    { id: "gray", ink: "#d9d4cc" },
+    { id: "bald" }
+];
+
+function hairTone(id) {
+    for (let i = 0; i < HAIR_TONES.length; i++) {
+        if (HAIR_TONES[i].id === id) return HAIR_TONES[i];
+    }
+    return HAIR_TONES[0];
+}
+
+function hairId() {
+    const id = player && player.hair;
+    return hairTone(id).id === id ? id : "own";
+}
+
+function personBase(value) {
+    const bare = String(value || "").replace(/[\u{1F3FB}-\u{1F3FF}]/gu, "");
+    return FACE_PEOPLE.indexOf(bare) >= 0 ? bare : "👨";
+}
+
+function personEmoji(value, skin, hair) {
+    const mod = {
+        "#f6d7c3": "\u{1F3FB}",
+        "#e7b48a": "\u{1F3FC}",
+        "#c68642": "\u{1F3FD}",
+        "#8d5524": "\u{1F3FE}",
+        "#5c3317": "\u{1F3FF}",
+        "#3b2212": "\u{1F3FF}"
+    };
+    const tone = mod[skin || skinInk()] || "\u{1F3FD}";
+    const base = personBase(value);
+    if ((hair || "own") === "bald") return base + tone + "\u200D\u{1F9B2}";
+    return base + tone;
+}
+
+function playerFaceHtml(value) {
+    const look = wearLook() || {};
+    const hair = hairId();
+    const tone = hairTone(hair);
+    const dye = tone.ink ? '<span class="face-hair" style="background:' + tone.ink + '"></span>' : "";
+    const flower = look.flower ? '<span class="face-flower">' + look.flower + "</span>" : "";
+    return '<span class="face-emoji">' + personEmoji(value, skinInk(), hair) + "</span>" + dye + flower;
 }
 
 function setFace(el, value, asClub) {
     if (!el) return;
-    el.innerHTML = faceMarkup(value, asClub);
+    if (asClub) {
+        el.innerHTML = crestSvg(socSeed(String(value || "club")));
+        return;
+    }
+    el.innerHTML = playerFaceHtml(value);
 }
+
+const SHOP = [
+    { id: "h1", mode: "off", tab: "hair", slot: "hair", style: "bald", price: 15, ru: "Налысо", en: "Shaved" },
+    { id: "h2", mode: "off", tab: "hair", slot: "hair", style: "short", price: 25, ru: "Короткая", en: "Short" },
+    { id: "h3", mode: "off", tab: "hair", slot: "hair", style: "fringe", price: 40, ru: "Чёлка", en: "Fringe" },
+    { id: "h4", mode: "off", tab: "hair", slot: "hair", style: "curls", price: 90, ru: "Кудри", en: "Curls" },
+    { id: "h5", mode: "off", tab: "hair", slot: "hair", style: "mohawk", ink: "#111111", price: 140, ru: "Ирокез", en: "Mohawk" },
+    { id: "h6", mode: "off", tab: "hair", slot: "hair", style: "long", price: 180, ru: "Длинные", en: "Long" },
+    { id: "h7", mode: "off", tab: "hair", slot: "hair", style: "fringe", ink: "#e6c36a", price: 220, ru: "Светлые", en: "Blonde" },
+    { id: "h8", mode: "off", tab: "hair", slot: "hair", style: "curls", ink: "#9a3412", price: 260, ru: "Рыжие", en: "Red" },
+    { id: "s1", mode: "off", tab: "cloth", slot: "shirt", ink: "#64748b", price: 15, ru: "Дворовая, линяет", en: "Yard shirt, fades" },
+    { id: "s2", mode: "off", tab: "cloth", slot: "shirt", ink: "#166534", price: 35, ru: "С рынка", en: "Market tee" },
+    { id: "s3", mode: "off", tab: "cloth", slot: "shirt", ink: "#e7e5e4", price: 60, ru: "Тонкий хлопок", en: "Thin cotton" },
+    { id: "st1", mode: "off", tab: "cloth", slot: "shirt", ink: "#111827", price: 180, ru: "Костюм на пресс", en: "Press suit" },
+    { id: "st2", mode: "off", tab: "cloth", slot: "shirt", ink: "#1e3a5f", price: 260, ru: "Костюм тёмно-синий", en: "Navy suit" },
+    { id: "j1", mode: "off", tab: "jacket", slot: "jacket", price: 45, ru: "Куртка с рынка", en: "Market jacket" },
+    { id: "ja", mode: "off", tab: "jacket", slot: "jacket", price: 520, ru: "Куртка Abibas", en: "Abibas jacket" },
+    { id: "jj", mode: "off", tab: "jacket", slot: "jacket", price: 690, ru: "Куртка Jordon", en: "Jordon jacket" },
+    { id: "c1", mode: "off", tab: "cap", slot: "cap", ink: "#44403c", price: 20, ru: "Кепка двора", en: "Yard cap" },
+    { id: "cw", mode: "off", tab: "cap", slot: "cap", ink: "#f8fafc", price: 30, ru: "Кепка белая", en: "White cap" },
+    { id: "cr", mode: "off", tab: "cap", slot: "cap", ink: "#b91c1c", price: 35, ru: "Кепка красная", en: "Red cap" },
+    { id: "cb", mode: "off", tab: "cap", slot: "cap", ink: "#2563eb", price: 35, ru: "Кепка синяя", en: "Blue cap" },
+    { id: "cg", mode: "off", tab: "cap", slot: "cap", ink: "#15803d", price: 35, ru: "Кепка зелёная", en: "Green cap" },
+    { id: "cy", mode: "off", tab: "cap", slot: "cap", ink: "#eab308", price: 35, ru: "Кепка жёлтая", en: "Yellow cap" },
+    { id: "cp", mode: "off", tab: "cap", slot: "cap", ink: "#ec4899", price: 35, ru: "Кепка розовая", en: "Pink cap" },
+    { id: "cj", mode: "off", tab: "cap", slot: "cap", ink: "#111111", price: 380, ru: "Кепка Jordon", en: "Jordon cap" },
+    { id: "cn", mode: "off", tab: "cap", slot: "cap", ink: "#171717", price: 320, ru: "Кепка Nikke", en: "Nikke cap" },
+    { id: "ca", mode: "off", tab: "cap", slot: "cap", ink: "#f8fafc", price: 340, ru: "Кепка Abibas", en: "Abibas cap" },
+    { id: "f1", mode: "off", tab: "flower", slot: "flower", flower: "🌼", price: 15, ru: "Ромашка", en: "Daisy" },
+    { id: "f2", mode: "off", tab: "flower", slot: "flower", flower: "🌹", price: 40, ru: "Роза", en: "Rose" },
+    { id: "f3", mode: "off", tab: "flower", slot: "flower", flower: "🌷", price: 35, ru: "Тюльпан", en: "Tulip" },
+    { id: "f4", mode: "off", tab: "flower", slot: "flower", flower: "🌻", price: 50, ru: "Подсолнух", en: "Sunflower" },
+    { id: "f5", mode: "off", tab: "flower", slot: "flower", flower: "🌸", price: 30, ru: "Сакура", en: "Cherry blossom" },
+    { id: "f6", mode: "off", tab: "flower", slot: "flower", flower: "🪻", price: 45, ru: "Лаванда", en: "Lavender" },
+    { id: "w1", mode: "off", tab: "watch", slot: "watch", price: 8, ru: "Кварц, стекло мутное", en: "Quartz, cloudy glass" },
+    { id: "w2", mode: "off", tab: "watch", slot: "watch", price: 18, ru: "Кварц с рынка", en: "Market quartz" },
+    { id: "w3", mode: "off", tab: "watch", slot: "watch", price: 35, ru: "Кварц на резинке", en: "Rubber quartz" },
+    { id: "w4", mode: "off", tab: "watch", slot: "watch", price: 90, ru: "Кварц стальной", en: "Steel quartz" },
+    { id: "w5", mode: "off", tab: "watch", slot: "watch", price: 240, ru: "Часы с браслетом", en: "Bracelet watch" },
+    { id: "w6", mode: "off", tab: "watch", slot: "watch", price: 2400, ru: "Роликсы", en: "Roliks" },
+    { id: "w7", mode: "off", tab: "watch", slot: "watch", price: 5200, ru: "Роликсы золото", en: "Gold Roliks" },
+    { id: "d3", mode: "off", tab: "shoes", slot: "boots", ink: "#e7e5e4", sole: "#a8a29e", price: 22, ru: "Кеды двора", en: "Yard sneakers" },
+    { id: "d2", mode: "off", tab: "shoes", slot: "boots", ink: "#78350f", sole: "#451a03", price: 40, ru: "Ботинки дешёвые", en: "Cheap boots" },
+    { id: "d1", mode: "off", tab: "shoes", slot: "boots", ink: "#1c1917", sole: "#1c1917", price: 70, ru: "Туфли на пресс", en: "Press shoes" },
+    { id: "d4", mode: "off", tab: "shoes", slot: "boots", ink: "#f8fafc", sole: "#e5e7eb", price: 95, ru: "Кеды белые", en: "White sneakers" },
+    { id: "d5", mode: "off", tab: "shoes", slot: "boots", ink: "#1d4ed8", sole: "#1e3a8a", price: 160, ru: "Кроссовки беговые", en: "Running shoes" },
+    { id: "d6", mode: "off", tab: "shoes", slot: "boots", ink: "#44403c", sole: "#292524", price: 240, ru: "Туфли кожа", en: "Leather shoes" },
+    { id: "d7", mode: "off", tab: "shoes", slot: "boots", ink: "#7c2d12", sole: "#451a03", price: 380, ru: "Лоферы", en: "Loafers" },
+    { id: "d8", mode: "off", tab: "shoes", slot: "boots", ink: "#111827", sole: "#facc15", price: 540, ru: "Кроссовки ночные", en: "Night sneakers" },
+    { id: "d9", mode: "off", tab: "shoes", slot: "boots", ink: "#0f172a", sole: "#e2e8f0", price: 720, ru: "Туфли на лак", en: "Patent shoes" },
+    { id: "b1", mode: "game", tab: "boots", slot: "boots", ink: "#6b5344", sole: "#3f2e22", price: 12, ru: "Дворовые, швы торчат", en: "Yard boots, seams out" },
+    { id: "b8", mode: "game", tab: "boots", slot: "boots", ink: "#78716c", sole: "#44403c", price: 18, ru: "Шиповки детские", en: "Kids studs" },
+    { id: "b2", mode: "game", tab: "boots", slot: "boots", ink: "#57534e", sole: "#a8a29e", price: 28, ru: "Рынок, подошва отходит", en: "Market, sole peeling" },
+    { id: "b3", mode: "game", tab: "boots", slot: "boots", ink: "#44403c", sole: "#292524", price: 55, ru: "Спорттовары, жмут", en: "Sports shop, tight" },
+    { id: "b7", mode: "game", tab: "boots", slot: "boots", ink: "#2563eb", sole: "#1e3a8a", price: 70, ru: "Футзалки", en: "Indoor shoes" },
+    { id: "b4", mode: "game", tab: "boots", slot: "boots", ink: "#1e3a8a", sole: "#1e3a8a", price: 90, ru: "Тренировочные", en: "Training boots" },
+    { id: "b9", mode: "game", tab: "boots", slot: "boots", ink: "#0f766e", sole: "#134e4a", price: 110, ru: "Без шипов", en: "No studs" },
+    { id: "b10", mode: "game", tab: "boots", slot: "boots", ink: "#78350f", sole: "#451a03", price: 150, ru: "Шиповки кожа", en: "Leather studs" },
+    { id: "b11", mode: "game", tab: "boots", slot: "boots", ink: "#1e40af", sole: "#1e3a8a", price: 210, ru: "Бутсы на липучке", en: "Strap boots" },
+    { id: "b5", mode: "game", tab: "boots", slot: "boots", ink: "#111827", sole: "#facc15", price: 240, ru: "Матчевые", en: "Match boots" },
+    { id: "b12", mode: "game", tab: "boots", slot: "boots", ink: "#0f172a", sole: "#38bdf8", price: 360, ru: "Бутсы с носком", en: "Sock boots" },
+    { id: "b6", mode: "game", tab: "boots", slot: "boots", ink: "#0f172a", sole: "#e11d48", price: 480, ru: "Профессиональные", en: "Pro boots" },
+    { id: "bp", mode: "game", tab: "boots", slot: "boots", ink: "#111111", sole: "#eab308", price: 700, ru: "Pumma", en: "Pumma" },
+    { id: "bb", mode: "game", tab: "boots", slot: "boots", ink: "#1e293b", sole: "#94a3b8", price: 740, ru: "New Balanse", en: "New Balanse" },
+    { id: "bn", mode: "game", tab: "boots", slot: "boots", ink: "#171717", sole: "#f5f5f5", price: 860, ru: "Nikke", en: "Nikke" },
+    { id: "ba", mode: "game", tab: "boots", slot: "boots", ink: "#f8fafc", sole: "#111111", price: 920, ru: "Abibas", en: "Abibas" },
+    { id: "bj", mode: "game", tab: "boots", slot: "boots", ink: "#111111", sole: "#dc2626", price: 980, ru: "Jordon", en: "Jordon" },
+    { id: "bz", mode: "game", tab: "boots", slot: "boots", ink: "#111111", sole: "#facc15", price: 1800, ru: "Zibane Predator", en: "Zibane Predator" },
+    { id: "bzg", mode: "game", tab: "boots", slot: "boots", ink: "#1c1917", sole: "#d4af37", price: 3400, ru: "Zibane Predator золото", en: "Zibane Predator gold" },
+    { id: "k1", mode: "game", tab: "socks", slot: "socks", len: "short", ink: "#d6d3d1", price: 10, ru: "Короткие, дырявые", en: "Short, holey" },
+    { id: "k3", mode: "game", tab: "socks", slot: "socks", len: "short", ink: "#f8fafc", price: 30, ru: "Короткие белые", en: "Short white" },
+    { id: "kp", mode: "game", tab: "socks", slot: "socks", len: "short", ink: "#111111", price: 140, ru: "Короткие Pumma", en: "Short Pumma" },
+    { id: "k4", mode: "game", tab: "socks", slot: "socks", len: "mid", ink: "#111827", price: 60, ru: "Средние чёрные", en: "Mid black" },
+    { id: "k2", mode: "game", tab: "socks", slot: "socks", len: "mid", ink: "#1d4ed8", price: 80, ru: "Средние игровые", en: "Mid match" },
+    { id: "kn", mode: "game", tab: "socks", slot: "socks", len: "mid", ink: "#171717", price: 240, ru: "Средние Nikke", en: "Mid Nikke" },
+    { id: "kj", mode: "game", tab: "socks", slot: "socks", len: "mid", ink: "#7f1d1d", price: 260, ru: "Средние Jordon", en: "Mid Jordon" },
+    { id: "k5", mode: "game", tab: "socks", slot: "socks", len: "long", ink: "#f8fafc", price: 70, ru: "Длинные белые", en: "Long white" },
+    { id: "k6", mode: "game", tab: "socks", slot: "socks", len: "long", ink: "#b91c1c", price: 90, ru: "Длинные красные", en: "Long red" },
+    { id: "kb", mode: "game", tab: "socks", slot: "socks", len: "long", ink: "#1e293b", price: 200, ru: "Длинные New Balanse", en: "Long New Balanse" },
+    { id: "ka", mode: "game", tab: "socks", slot: "socks", len: "long", ink: "#f8fafc", price: 220, ru: "Длинные Abibas", en: "Long Abibas" },
+    { id: "s4", mode: "game", tab: "shirt", slot: "shirt", ink: "#1d4ed8", price: 160, ru: "Тренировочная", en: "Training shirt" },
+    { id: "s5", mode: "game", tab: "shirt", slot: "shirt", ink: "#b91c1c", stripe: "#f8fafc", price: 320, ru: "Игровая", en: "Match shirt" },
+    { id: "s6", mode: "game", tab: "shirt", slot: "shirt", ink: "#ffffff", stripe: "#111111", price: 450, ru: "Полосатая", en: "Striped" },
+    { id: "sl3", mode: "game", tab: "shirt", slot: "shirt", sleeve: "long", ink: "#0f172a", price: 150, ru: "Длинный рукав, на холод", en: "Long sleeve, cold" },
+    { id: "sl1", mode: "game", tab: "shirt", slot: "shirt", sleeve: "long", ink: "#1e3a8a", price: 200, ru: "Длинный рукав, тренировка", en: "Long sleeve, training" },
+    { id: "sl2", mode: "game", tab: "shirt", slot: "shirt", sleeve: "long", ink: "#991b1b", stripe: "#f8fafc", price: 380, ru: "Длинный рукав, матч", en: "Long sleeve, match" },
+    { id: "sp", mode: "game", tab: "shirt", slot: "shirt", ink: "#111111", stripe: "#eab308", mark: "Pumma", price: 460, ru: "Футболка Pumma", en: "Pumma tee" },
+    { id: "sb", mode: "game", tab: "shirt", slot: "shirt", ink: "#1e3a5f", stripe: "#cbd5e1", mark: "New Balanse", price: 490, ru: "Футболка New Balanse", en: "New Balanse tee" },
+    { id: "sn", mode: "game", tab: "shirt", slot: "shirt", ink: "#0a0a0a", stripe: "#fafafa", price: 540, mark: "Nikke", ru: "Футболка Nikke", en: "Nikke tee" },
+    { id: "sa", mode: "game", tab: "shirt", slot: "shirt", ink: "#ffffff", stripe: "#111111", price: 580, mark: "Abibas", ru: "Футболка Abibas", en: "Abibas tee" },
+    { id: "sj", mode: "game", tab: "shirt", slot: "shirt", ink: "#111111", stripe: "#dc2626", price: 640, mark: "Jordon", ru: "Футболка Jordon", en: "Jordon tee" },
+    { id: "q1", mode: "game", tab: "gear", slot: "shorts", price: 12, ru: "Шорты, резинка слабая", en: "Shorts, weak elastic" },
+    { id: "q2", mode: "game", tab: "gear", slot: "shorts", price: 40, ru: "Шорты белые", en: "White shorts" },
+    { id: "q3", mode: "game", tab: "gear", slot: "shorts", price: 40, ru: "Шорты чёрные", en: "Black shorts" },
+    { id: "qb", mode: "game", tab: "gear", slot: "shorts", price: 190, ru: "Шорты New Balanse", en: "New Balanse shorts" },
+    { id: "qp", mode: "game", tab: "gear", slot: "shorts", price: 210, ru: "Шорты Pumma", en: "Pumma shorts" },
+    { id: "qn", mode: "game", tab: "gear", slot: "shorts", price: 250, ru: "Шорты Nikke", en: "Nikke shorts" },
+    { id: "g1", mode: "game", tab: "gear", slot: "gloves", price: 18, ru: "Перчатки, пальцы мокрые", en: "Wet-finger gloves" },
+    { id: "gp", mode: "game", tab: "gear", slot: "gloves", price: 210, ru: "Перчатки Pumma", en: "Pumma gloves" },
+    { id: "gn", mode: "game", tab: "gear", slot: "gloves", price: 260, ru: "Перчатки Nikke", en: "Nikke gloves" },
+    { id: "sh1", mode: "game", tab: "gear", slot: "shin", price: 15, ru: "Щитки картонные", en: "Cardboard shin pads" },
+    { id: "sh2", mode: "game", tab: "gear", slot: "shin", price: 80, ru: "Щитки игровые", en: "Match shin pads" },
+    { id: "tp1", mode: "game", tab: "gear", slot: "tape", price: 8, ru: "Тейп на щиколотку", en: "Ankle tape" },
+    { id: "u1", mode: "game", tab: "gear", slot: "base", price: 25, ru: "Нательная", en: "Base layer" },
+    { id: "a1", mode: "game", tab: "gear", slot: "arm", price: 40, ru: "Капитанская повязка", en: "Captain armband" }
+];
+
+const SHOP_TABS = {
+    off: ["hair", "cloth", "cap", "flower", "jacket", "watch", "shoes"],
+    game: ["boots", "socks", "shirt", "gear"]
+};
+
+let shopMode = "off";
+let shopFilter = "hair";
+
+function shopById(id) {
+    for (let i = 0; i < SHOP.length; i++) if (SHOP[i].id === id) return SHOP[i];
+    return null;
+}
+
+function ensureWear() {
+    if (!player.closet) player.closet = [];
+    if (!player.wear || typeof player.wear !== "object") player.wear = {};
+}
+
+function shopLabel(item) {
+    return document.documentElement.lang === "en" ? item.en : item.ru;
+}
+
+function wearLook() {
+    if (!player || !player.wear) return null;
+    const look = {};
+    const hair = shopById(player.wear.hair);
+    const shirt = shopById(player.wear.shirt);
+    const boots = shopById(player.wear.boots);
+    const cap = shopById(player.wear.cap);
+    if (hair) {
+        look.hairStyle = hair.style;
+        if (hair.ink) look.hairInk = hair.ink;
+    }
+    const socks = shopById(player.wear.socks);
+    if (shirt) {
+        look.shirtInk = shirt.ink;
+        if (shirt.stripe) look.stripeInk = shirt.stripe;
+        if (shirt.sleeve) look.sleeve = shirt.sleeve;
+        if (shirt.mark) look.mark = shirt.mark;
+    }
+    if (boots) {
+        look.bootInk = boots.ink;
+        look.soleInk = boots.sole || boots.ink;
+    }
+    if (cap) look.capInk = cap.ink;
+    const flower = shopById(player.wear.flower);
+    if (flower && flower.flower) look.flower = flower.flower;
+    if (socks && socks.ink) {
+        look.sockInk = socks.ink;
+        look.sockLen = socks.len || "mid";
+    }
+    if (shopById(player.wear.shin)) look.shin = true;
+    return look;
+}
+
+function paintShop() {
+    const list = get("shopList");
+    if (!list || !player || !player.name) return;
+    ensureWear();
+    const worn = [];
+    ["hair", "shirt", "cap", "flower", "jacket", "watch", "boots", "socks", "shorts", "gloves", "shin", "tape", "base", "arm"].forEach(function (slot) {
+        const item = shopById(player.wear[slot]);
+        if (item) worn.push(shopLabel(item));
+    });
+    const wornEl = get("shopWorn");
+    if (wornEl) wornEl.textContent = worn.length ? t("shopWorn", { n: worn.join(" · ") }) : t("shopNone");
+    const modes = get("shopMode");
+    if (modes) {
+        modes.querySelectorAll("button").forEach(function (btn) {
+            const key = btn.getAttribute("data-mode");
+            btn.classList.toggle("on", key === shopMode);
+            btn.textContent = t(key === "game" ? "shopGame" : "shopOffMode");
+        });
+    }
+    const tabs = get("shopTabs");
+    const tabKeys = SHOP_TABS[shopMode] || SHOP_TABS.off;
+    if (tabKeys.indexOf(shopFilter) < 0) shopFilter = tabKeys[0];
+    if (tabs) {
+        const labels = {
+            hair: t("shopHair"), cloth: t("shopCloth"), cap: t("shopCap"), flower: t("shopFlower"), jacket: t("shopJacket"), watch: t("shopWatch"), shoes: t("shopShoes"),
+            boots: t("shopBoots"), socks: t("shopSocks"), shirt: t("shopShirts"), gear: t("shopGear")
+        };
+        tabs.innerHTML = tabKeys.map(function (key) {
+            return '<button type="button" data-shop="' + key + '"' + (key === shopFilter ? ' class="on"' : "") + ">" + (labels[key] || key) + "</button>";
+        }).join("");
+    }
+    const rows = SHOP.filter(function (item) {
+        return item.mode === shopMode && item.tab === shopFilter;
+    });
+    list.innerHTML = rows.map(function (item) {
+        const owned = player.closet.indexOf(item.id) >= 0;
+        const on = player.wear[item.slot] === item.id;
+        const label = on ? t("shopOff") : (owned ? t("shopOn") : t("shopBuy", { pay: money(item.price) }));
+        return '<div class="shop-row"><span>' + shopLabel(item) + '</span><button type="button" data-buy="' + item.id + '">' + label + '</button></div>';
+    }).join("");
+    paintSkin();
+}
+
+function buyWear(id) {
+    const item = shopById(id);
+    if (!item || !player || !player.name) return;
+    ensureWear();
+    const owned = player.closet.indexOf(id) >= 0;
+    if (owned && player.wear[item.slot] === id) {
+        player.wear[item.slot] = "";
+        Sfx.click();
+        paintShop();
+        updateHeader();
+        renderSocial();
+        save();
+        return;
+    }
+    if (!owned) {
+        if ((player.respect || 0) < item.price) {
+            Sfx.error();
+            addLog(t("shopNeed", { pay: money(item.price) }));
+            return;
+        }
+        player.respect -= item.price;
+        player.closet.push(id);
+        addLog(t("shopGot", { name: shopLabel(item) }));
+        Sfx.ding();
+        updateRespect();
+    } else Sfx.click();
+    player.wear[item.slot] = id;
+    paintShop();
+    updateHeader();
+    renderSocial();
+    save();
+}
+
+const KIT_COLORS = ["#163a5f", "#b91c1c", "#14532d", "#f8fafc", "#111827", "#facc15", "#7c3aed", "#0f766e", "#ea580c", "#1d4ed8"];
+const KIT_ADS = [
+    { id: "", ru: "Без рекламы", en: "No sponsor" },
+    { id: "pmw", ru: "PMW", en: "PMW" },
+    { id: "pupik", ru: "Pupik", en: "Pupik" },
+    { id: "jordon", ru: "Jordon", en: "Jordon" },
+    { id: "nikke", ru: "Nikke", en: "Nikke" },
+    { id: "balanse", ru: "New Balanse", en: "New Balanse" },
+    { id: "pumma", ru: "Pumma", en: "Pumma" },
+    { id: "abibas", ru: "Abibas", en: "Abibas" },
+    { id: "chai", ru: "ЧайДвор", en: "YardTea" },
+    { id: "neft", ru: "Нефть+", en: "Neft+" }
+];
+
+function kitPickName(list, id) {
+    for (let i = 0; i < list.length; i++) {
+        if (list[i].id === id) return document.documentElement.lang === "en" ? list[i].en : list[i].ru;
+    }
+    return "";
+}
+
+function ensureKit() {
+    if (!player.kit || typeof player.kit !== "object") {
+        player.kit = { shirt: "#163a5f", shorts: "#f8fafc", socks: "#163a5f", trim: "#d4af37", ad: "", stick: "" };
+    }
+}
+
+function inkOn(hex) {
+    const n = parseInt(String(hex || "#000").slice(1), 16);
+    if (!n && n !== 0) return "#f8fafc";
+    const r = (n >> 16) & 255;
+    const g = (n >> 8) & 255;
+    const b = n & 255;
+    return (r * 299 + g * 587 + b * 114) > 150000 ? "#111111" : "#f8fafc";
+}
+
+function svgText(s) {
+    return String(s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;");
+}
+
+const SKIN_TONES = ["#f6d7c3", "#e7b48a", "#c68642", "#8d5524", "#5c3317", "#3b2212"];
+
+function kitSvg(kit) {
+    kit = kit || {};
+    const shirt = kit.shirt || "#163a5f";
+    const shorts = kit.shorts || "#f8fafc";
+    const socks = kit.socks || shirt;
+    const ink = inkOn(shirt);
+    const label = kit.ad ? svgText(kitPickName(KIT_ADS, kit.ad)) : "";
+    const size = label.length > 11 ? 6 : label.length > 8 ? 7 : 9;
+    const adText = label
+        ? '<text x="50" y="92" text-anchor="middle" font-size="' + size + '" font-family="sans-serif" font-weight="800" fill="' + ink + '"' + (label.length > 8 ? ' textLength="24" lengthAdjust="spacingAndGlyphs"' : "") + ">" + label + "</text>"
+        : "";
+    const look = wearLook() || {};
+    const hair = hairId();
+    const dye = hairTone(hair).ink;
+    const who = personEmoji(player && player.avatar, skinInk(), hair);
+    const hairShape = dye ? '<ellipse cx="50" cy="28" rx="13" ry="7" fill="' + dye + '"/>' : "";
+    const flower = look.flower ? '<text x="76" y="46" font-size="14">' + look.flower + "</text>" : "";
+    return '<svg viewBox="0 0 100 180" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">'
+        + '<rect width="100" height="180" fill="#0c1018"/>'
+        + '<text x="50" y="40" text-anchor="middle" font-size="26">' + who + "</text>"
+        + hairShape
+        + flower
+        + '<path d="M38 66 L24 80 L30 86 L42 72z" fill="' + shirt + '"/>'
+        + '<path d="M62 66 L76 80 L70 86 L58 72z" fill="' + shirt + '"/>'
+        + '<path d="M40 62h20l4 46H36z" fill="' + shirt + '"/>'
+        + adText
+        + '<path d="M36 108h13l-2 18H38z" fill="' + shorts + '"/>'
+        + '<path d="M51 108h13l-2 18H53z" fill="' + shorts + '"/>'
+        + '<rect x="38" y="126" width="8" height="16" fill="' + socks + '"/>'
+        + '<rect x="54" y="126" width="8" height="16" fill="' + socks + '"/>'
+        + "</svg>";
+}
+
+function paintSkin() {
+    const html = SKIN_TONES.map(function (color) {
+        const on = skinInk() === color ? " on" : "";
+        return '<button type="button" class="kit-swatch' + on + '" data-skin="' + color + '" style="background:' + color + '"></button>';
+    }).join("");
+    const shop = get("skinPicks");
+    if (shop) shop.innerHTML = html;
+    const kit = get("kitSkin");
+    if (kit) {
+        kit.innerHTML = SKIN_TONES.map(function (color) {
+            const on = skinInk() === color ? " on" : "";
+            return '<button type="button" class="kit-swatch' + on + '" data-kit="skin" data-ink="' + color + '" style="background:' + color + '"></button>';
+        }).join("");
+    }
+    paintHair();
+}
+
+function hairSwatchHtml() {
+    const current = hairId();
+    return HAIR_TONES.map(function (tone) {
+        const on = current === tone.id ? " on" : "";
+        const kind = tone.id === "own" ? " hair-own" : (tone.id === "bald" ? " hair-bald" : "");
+        const bg = tone.ink ? ' style="background:' + tone.ink + '"' : "";
+        return '<button type="button" class="kit-swatch' + kind + on + '" data-hair="' + tone.id + '"' + bg + "></button>";
+    }).join("");
+}
+
+function paintHair() {
+    const html = hairSwatchHtml();
+    const shop = get("hairPicks");
+    if (shop) shop.innerHTML = html;
+    const kit = get("kitHair");
+    if (kit) kit.innerHTML = html;
+}
+
+function setHair(id) {
+    if (!player || !player.name || hairTone(id).id !== id || player.hair === id) return;
+    player.hair = id;
+    Sfx.click();
+    paintHair();
+    if (isClub()) paintKit();
+    updateHeader();
+    renderSocial();
+    save();
+}
+
+function setSkin(color) {
+    if (!player || !player.name || SKIN_TONES.indexOf(color) < 0 || player.skin === color) return;
+    player.skin = color;
+    Sfx.click();
+    paintSkin();
+    if (isClub()) paintKit();
+    updateHeader();
+    renderSocial();
+    save();
+}
+
+function paintKit() {
+    const card = get("kitCard");
+    if (!card || !player || !player.name) return;
+    card.hidden = !isClub();
+    if (!isClub()) return;
+    ensureKit();
+    const preview = get("kitPreview");
+    if (preview) preview.innerHTML = kitSvg(player.kit);
+    const line = get("kitLine");
+    if (line) {
+        line.textContent = player.kit.ad ? kitPickName(KIT_ADS, player.kit.ad) : "";
+    }
+    paintSkin();
+    [["kitShirt", "shirt"], ["kitShorts", "shorts"], ["kitSocks", "socks"]].forEach(function (pair) {
+        const box = get(pair[0]);
+        if (!box) return;
+        box.innerHTML = KIT_COLORS.map(function (color) {
+            const on = player.kit[pair[1]] === color ? " on" : "";
+            return '<button type="button" class="kit-swatch' + on + '" data-kit="' + pair[1] + '" data-ink="' + color + '" style="background:' + color + '"></button>';
+        }).join("");
+    });
+    const ads = get("kitAds");
+    if (ads) {
+        ads.innerHTML = KIT_ADS.map(function (row) {
+            const on = (player.kit.ad || "") === row.id ? " on" : "";
+            return '<button type="button" class="' + on + '" data-kit="ad" data-ink="' + row.id + '">' + kitPickName(KIT_ADS, row.id) + "</button>";
+        }).join("");
+    }
+}
+
+function setKit(part, value) {
+    if (!player || !player.name || !isClub()) return;
+    ensureKit();
+    if (part === "skin") {
+        setSkin(value);
+        return;
+    }
+    if (player.kit[part] === value) return;
+    let cost = 0;
+    if (part === "ad" && value) cost = 60;
+    if ((player.respect || 0) < cost) {
+        Sfx.error();
+        addLog(t("kitNeed", { pay: money(cost) }));
+        return;
+    }
+    if (cost) {
+        player.respect -= cost;
+        updateRespect();
+        addLog(t("kitSet", { pay: money(cost) }));
+        Sfx.ding();
+    } else Sfx.click();
+    player.kit[part] = value;
+    paintKit();
+    updateHeader();
+    save();
+}
+
+function takeKitAd(result) {
+    if (!isClub() || !player.kit || !player.kit.ad) return 0;
+    const rep = fameValue();
+    const base = 10 + Math.round((rep / 99) * 90);
+    const mul = result === "win" ? 1 : result === "draw" ? 0.6 : 0.35;
+    const pay = Math.max(1, Math.round(base * mul));
+    player.respect = (player.respect || 0) + pay;
+    return pay;
+}
+
 const CLUB_AVATARS = ["🏟️", "⭐", "🦅", "🐻", "🦁", "🔥", "👑", "💎", "⚡", "🌹", "🧿", "🌙", "🛡️", "🚀"];
 
 const ONLINE_RIVALS = [
@@ -460,6 +1014,8 @@ let player = newPlayer("");
 let selectedMode = "player";
 let selectedNation = "KZ";
 let selectedAvatar = "⚽";
+let selectedSkin = "#e7b48a";
+let selectedHair = "own";
 let marketFilter = "all";
 let marketPos = "all";
 let lastOvr = null;
@@ -496,6 +1052,7 @@ function newPlayer(name, position, nation, avatar) {
         fame: 50,
         mode: "player",
         nation: nat.id,
+        skin: "#e7b48a",
         avatar: avatar || AVATARS[pos] || "⚽",
         squad: [],
         grid: [],
@@ -2223,24 +2780,14 @@ function syncDraftWindow() {
 
 function updateDrop() {
     const card = get("dropCard");
+    if (card) card.hidden = true;
     const club = !!(player && player.name && isClub());
-    if (card) card.hidden = !club;
     if (!club) {
         closeDraft();
         paintLive();
         return;
     }
     syncDraftWindow();
-    const now = dropNow();
-    const title = get("dropTitle");
-    const text = get("dropText");
-    const next = get("dropNext");
-    const kicker = get("dropKicker");
-    if (kicker) kicker.textContent = t("dropKicker");
-    if (title) title.textContent = t(now.drop.title);
-    if (text) text.textContent = t(now.drop.text);
-    if (next) next.textContent = t("dropNext", { n: now.days, t: player && player.name ? player.draftTokens : 0 });
-    paintExclusiveCards(get("dropCards"));
     paintLive();
 }
 
@@ -2351,6 +2898,8 @@ function paintLive() {
     if (left) left.textContent = liveClock();
     const only = get("liveOnly");
     if (only) only.textContent = now.drop.tone === "rainbow" ? t("liveOnlyLong") : t("liveOnly");
+    const next = get("liveNext");
+    if (next) next.textContent = t("dropNext", { n: now.days, t: player && player.name ? player.draftTokens : 0 });
     if (bar) bar.className = "live-upd tone-" + (now.drop.tone || "dusk");
     paintExclusiveCards(get("liveCards"));
     const mark = now.drop.id + ":" + now.n;
@@ -2371,12 +2920,65 @@ function closeDraft() {
     if (box) box.hidden = true;
 }
 
+function taleKind() {
+    return isClub() ? "club" : "player";
+}
+
 function ensureTale() {
     if (!player) return;
-    if (!player.tale || typeof player.tale.step !== "number") player.tale = { step: 0, tone: "" };
+    const kind = taleKind();
+    if (!player.tale || typeof player.tale.step !== "number") {
+        player.tale = { step: 0, tone: "", end: "", kind: kind };
+    }
+    if (!player.tale.kind) {
+        if (kind === "club") player.tale = { step: 0, tone: "", end: "", kind: "club" };
+        else player.tale.kind = "player";
+    }
+}
+
+function clubTaleBeats() {
+    return [
+        {
+            id: "gate",
+            title: "c1t",
+            text: function () { return t("c1"); },
+            ready: function () { return true; },
+            picks: [
+                { id: "a", label: "c1a", log: "c1alog", fame: 2, tone: "crowd" },
+                { id: "b", label: "c1b", log: "c1blog", fame: -1, cash: 100, tone: "cash" },
+                { id: "c", label: "c1c", log: "c1clog", fame: 1, tone: "yard" },
+                { id: "d", label: "c1d", log: "c1dlog", fame: 3, cash: -40, tone: "wreck" }
+            ]
+        },
+        {
+            id: "column",
+            title: "c2t",
+            text: function () { return t("c2" + ((player.tale && player.tale.tone) || "crowd")); },
+            ready: function () { return (player.matches || 0) >= 1; },
+            picks: [
+                { id: "a", label: "c2a", log: "c2alog", fame: 1, cash: 80 },
+                { id: "b", label: "c2b", log: "c2blog", fame: 2, cash: -20 },
+                { id: "c", label: "c2c", log: "c2clog", fame: 1, cash: 30 },
+                { id: "d", label: "c2d", log: "c2dlog", fame: 1 }
+            ]
+        },
+        {
+            id: "plan",
+            title: "c3t",
+            text: function () { return t("c3" + ((player.tale && player.tale.tone) || "crowd")); },
+            ready: function () { return (player.week || 1) >= 6; },
+            picks: [
+                { id: "a", label: "c3a", log: "c3alog", fame: 2, stad: 1, end: "bowl" },
+                { id: "b", label: "c3b", log: "c3blog", fame: 2, cash: 40, end: "home" },
+                { id: "c", label: "c3c", log: "c3clog", cash: 100, end: "school" },
+                { id: "d", label: "c3d", log: "c3dlog", fame: -1, cash: 20, end: "shut" }
+            ]
+        }
+    ];
 }
 
 function taleBeats() {
+    if (isClub()) return clubTaleBeats();
     return [
         {
             id: "arrive",
@@ -2405,13 +3007,13 @@ function taleBeats() {
         {
             id: "mic",
             title: "tale3t",
-            text: function () { return t("tale3"); },
+            text: function () { return t("tale3" + ((player.tale && player.tale.tone) || "team")); },
             ready: function () { return (player.week || 1) >= 6; },
             picks: [
-                { id: "a", label: "tale3a", log: "tale3alog", fame: 2, cash: 150 },
-                { id: "b", label: "tale3b", log: "tale3blog", fame: 1, stat: "physical", statN: 2 },
-                { id: "c", label: "tale3c", log: "tale3clog", fame: 2, stat: "passing", cash: 40 },
-                { id: "d", label: "tale3d", log: "tale3dlog", fame: -1, stat: "shooting", cash: 30 }
+                { id: "a", label: "tale3a", log: "tale3alog", fame: 2, cash: 150, end: "a" },
+                { id: "b", label: "tale3b", log: "tale3blog", fame: 1, stat: "physical", statN: 2, end: "b" },
+                { id: "c", label: "tale3c", log: "tale3clog", fame: 2, stat: "passing", cash: 40, end: "c" },
+                { id: "d", label: "tale3d", log: "tale3dlog", fame: -1, stat: "shooting", cash: 30, end: "d" }
             ]
         }
     ];
@@ -2477,6 +3079,12 @@ function pickTale(side) {
     if (pick.fame) addFame(pick.fame);
     if (pick.stat) taleStat(pick.stat, pick.statN || 1);
     if (pick.tone) player.tale.tone = pick.tone;
+    if (pick.end) player.tale.end = pick.end;
+    if (pick.stad) {
+        ensureStadium();
+        player.stadium.level = Math.min(STADIUM.length - 1, player.stadium.level + pick.stad);
+        paintStadium();
+    }
     player.tale.step += 1;
     addLog(t(pick.log));
     closeTale();
@@ -2504,16 +3112,22 @@ function paintTale() {
         if (text) text.textContent = beat.text();
         if (open) {
             open.hidden = false;
-            open.textContent = t("taleOpen");
+            open.textContent = t(isClub() ? "cOpen" : "taleOpen");
         }
     } else {
         if (open) open.hidden = true;
         if (player.tale.step >= taleBeats().length) {
-            if (title) title.textContent = t("taleEndT");
-            if (text) text.textContent = t("taleEnd");
+            const tone = player.tale.tone || (isClub() ? "crowd" : "team");
+            const end = player.tale.end || "";
+            const head = (isClub() ? "cEnd_" : "pEnd_") + tone;
+            const tail = (isClub() ? "cClose_" : "pClose_") + end;
+            if (title) title.textContent = end ? t((isClub() ? "cEndT_" : "pEndT_") + tone) : t("taleEndT");
+            if (text) text.textContent = end ? (t(head) + " " + t(tail)) : t("taleEnd");
         } else {
-            if (title) title.textContent = t("taleWho");
-            if (text) text.textContent = t((player.matches || 0) < 1 ? "taleWait" : "taleWaitLate");
+            if (title) title.textContent = t(isClub() ? "cWho" : "taleWho");
+            if (text) text.textContent = t((player.matches || 0) < 1
+                ? (isClub() ? "cWait" : "taleWait")
+                : (isClub() ? "cWaitLate" : "taleWaitLate"));
         }
     }
     const box = get("taleOverlay");
@@ -3046,6 +3660,9 @@ function updateScheduleUI() {
         if (player.retired) {
             matchBtn.disabled = true;
             matchBtn.textContent = t("retiredBtn");
+        } else if (gearDue()) {
+            matchBtn.disabled = true;
+            matchBtn.textContent = t("gearBlock");
         } else {
             matchBtn.disabled = !(canPlay || canSkip);
             matchBtn.textContent = hurt && due
@@ -3056,7 +3673,7 @@ function updateScheduleUI() {
         }
     }
     if (dockMatch) {
-        dockMatch.disabled = player.retired || !(canPlay || canSkip);
+        dockMatch.disabled = player.retired || gearDue() || !(canPlay || canSkip);
         dockMatch.textContent = hurt && due
             ? "🤕 " + t("skipShort")
             : (due
@@ -3251,9 +3868,13 @@ function load() {
         if (!player.socReplies || typeof player.socReplies !== "object" || Array.isArray(player.socReplies)) player.socReplies = {};
         if (typeof player.fame === "number") player.fame = Math.min(player.fame, fameCap());
         if (!player.nation) player.nation = "KZ";
+        if (SKIN_TONES.indexOf(player.skin) < 0) player.skin = "#e7b48a";
+        if (hairTone(player.hair).id !== player.hair) player.hair = "own";
         if (player.ntCalled && !player.ntFixtures) seedInternationals();
         if (!player.avatar) {
             player.avatar = player.mode === "club" ? "🏟️" : (AVATARS[player.position] || "⚽");
+        } else if (player.mode !== "club") {
+            player.avatar = personBase(player.avatar);
         }
         if (!player.tale || typeof player.tale.step !== "number") player.tale = { step: 0, tone: "" };
         if (!Array.isArray(player.squad)) player.squad = [];
@@ -3430,7 +4051,9 @@ function updateHeader() {
     if (get("weekDisplayClub")) get("weekDisplayClub").textContent = player.week;
     get("ageLine").hidden = clubMode;
     if (get("weekLine")) get("weekLine").hidden = !clubMode;
-    setFace(get("avatar"), clubMode ? player.name : (player.avatar || "p0"), clubMode);
+    const shopTab = document.querySelector('#careerTabs [data-panel="shop"]');
+    if (shopTab) shopTab.hidden = clubMode;
+    setFace(get("avatar"), clubMode ? player.name : (player.avatar || "p0"), clubMode, clubMode ? null : wearLook());
     if (get("careerTitle")) {
         get("careerTitle").textContent = clubMode ? t("myClub") : t("myCareer");
     }
@@ -4752,7 +5375,7 @@ function renderSocial() {
     if (!box || box.hidden || !player || !player.name) return;
     const clubMode = isClub();
     if (get("socialKind")) get("socialKind").textContent = t(clubMode ? "socClub" : "socPlayer");
-    setFace(get("socialAva"), clubMode ? player.name : (player.avatar || "p0"), clubMode);
+    setFace(get("socialAva"), clubMode ? player.name : (player.avatar || "p0"), clubMode, clubMode ? null : wearLook());
     if (get("socialName")) get("socialName").textContent = player.name;
     const tick = get("socialTick");
     if (tick) {
@@ -4776,10 +5399,11 @@ function renderSocial() {
     const feed = get("socialFeed");
     const detail = get("socialDetail");
     const focus = posts.find(function (post) { return post.id === socialFocusId; });
-    const special = socialPane === "friends" || socialPane === "chat" || socialPane === "subs" || socialPane === "plan";
+    const special = socialPane === "friends" || socialPane === "chat" || socialPane === "plan";
     const reading = (socialPane === "likes" || socialPane === "comments" || socialPane === "downs") && !!focus;
+    if (socialPane === "subs") socialPane = "feed";
     if (!special && !reading) socialPane = "feed";
-    const tabOn = socialPane === "chat" ? "friends" : (socialPane === "subs" || socialPane === "plan" || socialPane === "friends" ? socialPane : "feed");
+    const tabOn = socialPane === "chat" ? "friends" : (socialPane === "plan" || socialPane === "friends" ? socialPane : "feed");
     document.querySelectorAll("#socTabs button").forEach(function (btn) {
         btn.classList.toggle("on", btn.getAttribute("data-soc") === tabOn);
     });
@@ -4792,10 +5416,6 @@ function renderSocial() {
     }
     if (!feed) return;
     feed.textContent = "";
-    if (socialPane === "subs") {
-        renderSubs(feed);
-        return;
-    }
     if (socialPane === "plan") {
         renderPlan(feed);
         return;
@@ -4879,12 +5499,6 @@ function renderSocial() {
                 renderSocial();
             });
             row.appendChild(pal);
-            const sub = document.createElement("button");
-            sub.type = "button";
-            sub.className = "soc-act" + (isSub(post.who.id) ? " on" : "");
-            sub.textContent = isSub(post.who.id) ? t("socSubbed") : t("socSub");
-            sub.addEventListener("click", function () { toggleSub(post.who); });
-            row.appendChild(sub);
         }
         if (post.mate || post.world) {
             const who = document.createElement("div");
@@ -5253,6 +5867,9 @@ function renderAll() {
     updateEventCal();
     renderBank();
     paintStadium();
+    paintGear();
+    paintShop();
+    paintKit();
     updateDrop();
     paintTale();
     maybeTale();
@@ -5328,7 +5945,7 @@ function selectMode(mode) {
         const nat = nationById(selectedNation);
         get("clubCity").placeholder = t("cityEg", { city: nationCity(nat) });
     } else {
-        selectedAvatar = PLAYER_AVATARS[0];
+        selectedAvatar = "👨";
         get("playerName").focus();
     }
     renderCreatePicks();
@@ -5359,14 +5976,55 @@ function renderCreatePicks() {
     });
 
     avatarBox.innerHTML = "";
+    const label = get("avatarLabel");
+    if (selectedMode !== "club") {
+        if (label) label.textContent = t("avatar");
+        if (FACE_PEOPLE.indexOf(selectedAvatar) < 0) selectedAvatar = "👨";
+        if (SKIN_TONES.indexOf(selectedSkin) < 0) selectedSkin = "#e7b48a";
+        if (hairTone(selectedHair).id !== selectedHair) selectedHair = "own";
+        SKIN_TONES.forEach(function (color) {
+            const btn = document.createElement("button");
+            btn.type = "button";
+            btn.className = "kit-swatch" + (color === selectedSkin ? " on" : "");
+            btn.style.background = color;
+            btn.addEventListener("click", function () {
+                Sfx.click();
+                selectedSkin = color;
+                renderCreatePicks();
+            });
+            avatarBox.appendChild(btn);
+        });
+        HAIR_TONES.forEach(function (tone) {
+            const btn = document.createElement("button");
+            btn.type = "button";
+            btn.className = "kit-swatch" + (tone.id === "own" ? " hair-own" : (tone.id === "bald" ? " hair-bald" : "")) + (tone.id === selectedHair ? " on" : "");
+            if (tone.ink) btn.style.background = tone.ink;
+            btn.addEventListener("click", function () {
+                Sfx.click();
+                selectedHair = tone.id;
+                renderCreatePicks();
+            });
+            avatarBox.appendChild(btn);
+        });
+        FACE_PEOPLE.forEach(function (face) {
+            const btn = document.createElement("button");
+            btn.type = "button";
+            btn.textContent = personEmoji(face, selectedSkin, selectedHair);
+            if (face === selectedAvatar) btn.classList.add("on");
+            btn.addEventListener("click", function () {
+                Sfx.click();
+                selectedAvatar = face;
+                renderCreatePicks();
+            });
+            avatarBox.appendChild(btn);
+        });
+        return;
+    }
+    if (label) label.textContent = t("avatar");
     avatars.forEach((face) => {
         const btn = document.createElement("button");
         btn.type = "button";
-        if (selectedMode === "club") btn.textContent = face;
-        else {
-            btn.classList.add("face-pick");
-            btn.innerHTML = portraitSvg(avatarIndex(face));
-        }
+        btn.textContent = face;
         if (face === selectedAvatar) btn.classList.add("on");
         btn.addEventListener("click", function () {
             Sfx.click();
@@ -5397,6 +6055,7 @@ function showCareer() {
 }
 
 function showPanel(id) {
+    if (id === "shop" && isClub()) id = "club";
     document.querySelectorAll(".panel").forEach(function (panel) {
         panel.classList.toggle("on", panel.getAttribute("data-panel") === id);
     });
@@ -5417,6 +6076,77 @@ function stadNum(n) {
     return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, " ");
 }
 
+function ensureGear() {
+    if (!player) return;
+    if (!player.gear || typeof player.gear.at !== "number") {
+        const flip = ((player.name || "").length) % 2;
+        player.gear = { at: 0, every: flip ? 11 : 10 };
+    }
+    if (player.gear.every !== 10 && player.gear.every !== 11) player.gear.every = 10;
+}
+
+function gearLeft() {
+    ensureGear();
+    return player.gear.every - ((player.matches || 0) - player.gear.at);
+}
+
+function gearDue() {
+    return !!player && !!player.name && gearLeft() <= 0;
+}
+
+function gearCost() {
+    ensureStadium();
+    return 90 + ((player.stadium && player.stadium.level) || 0) * 50;
+}
+
+function paintGear() {
+    if (!player || !player.name) return;
+    const due = gearDue();
+    const left = gearLeft();
+    const cost = gearCost();
+    const hintText = due
+        ? t("gearRust", { pay: money(cost) })
+        : t(left === 1 ? "gearLeft1" : "gearLeft", { n: left });
+    ["stadGear", "stadKGear"].forEach(function (id) {
+        const node = get(id);
+        if (!node) return;
+        node.hidden = false;
+        node.textContent = hintText;
+    });
+    const matchHint = get("gearHint");
+    if (matchHint) {
+        matchHint.hidden = !due;
+        matchHint.textContent = hintText;
+    }
+    ["gearBuy", "stadGearBtn", "stadKGearBtn"].forEach(function (id) {
+        const btn = get(id);
+        if (!btn) return;
+        btn.hidden = !due;
+        btn.disabled = !due;
+        btn.textContent = t("gearBuy", { pay: money(cost) });
+    });
+}
+
+function buyGear() {
+    if (!player || !player.name || !gearDue()) return;
+    const cost = gearCost();
+    if ((player.respect || 0) < cost) {
+        Sfx.error();
+        addLog(t("gearNeed", { pay: money(cost) }));
+        return;
+    }
+    player.respect -= cost;
+    ensureGear();
+    player.gear.at = player.matches || 0;
+    player.gear.every = player.gear.every === 10 ? 11 : 10;
+    Sfx.ding();
+    addLog(t("gearNew", { pay: money(cost), n: player.gear.every }));
+    updateRespect();
+    paintGear();
+    updateScheduleUI();
+    save();
+}
+
 function ensureStadium() {
     if (!player) return;
     if (!player.stadium || typeof player.stadium.level !== "number") {
@@ -5425,35 +6155,83 @@ function ensureStadium() {
     player.stadium.level = Math.max(0, Math.min(STADIUM.length - 1, player.stadium.level | 0));
 }
 
+function ensureYard() {
+    if (!player) return;
+    if (!player.yard) player.yard = { lines: false, staff: false };
+}
+
+const YARD_COST = { lines: 100, staff: 160 };
+
+function buyYard(kind) {
+    if (!player || !player.name || !YARD_COST[kind]) return;
+    ensureYard();
+    if (player.yard[kind]) return;
+    const cost = YARD_COST[kind];
+    if ((player.respect || 0) < cost) {
+        Sfx.error();
+        addLog(t(kind === "lines" ? "linesNeed" : "staffNeed", { pay: money(cost) }));
+        return;
+    }
+    player.respect -= cost;
+    player.yard[kind] = true;
+    Sfx.ding();
+    addLog(t(kind === "lines" ? "linesBuy" : "staffBuy", { pay: money(cost) }));
+    updateRespect();
+    paintStadium();
+    save();
+}
+
 function paintStadium() {
-    if (!get("stadBowl") || !player || !player.name) return;
+    const clubBox = get("stadClub");
+    if (clubBox) clubBox.hidden = !(player && player.name && isClub());
+    if (!player || !player.name) return;
     ensureStadium();
-    const row = STADIUM[player.stadium.level];
-    const next = STADIUM[player.stadium.level + 1];
-    get("stadBowl").setAttribute("data-lv", String(player.stadium.level));
-    const name = get("stadName");
-    if (name) name.textContent = t("stadName", { club: ui(player.club) });
-    const rank = get("stadRank");
-    if (rank) rank.textContent = t("stad" + player.stadium.level);
-    const seats = get("stadSeats");
-    if (seats) seats.textContent = stadNum(row.seats);
-    const gate = get("stadGate");
-    if (gate) gate.textContent = money(row.gate);
-    const last = get("stadLast");
-    if (last) {
-        last.textContent = player.stadium.crowd
-            ? t("stadLast", { n: stadNum(player.stadium.crowd), pay: money(player.stadium.pay || 0) })
-            : t("stadEmpty");
-    }
-    const btn = get("stadUp");
-    if (!btn) return;
-    if (!next) {
-        btn.disabled = true;
-        btn.textContent = t("stadMax");
-    } else {
-        btn.disabled = false;
-        btn.textContent = t("stadUp", { pay: money(next.cost) });
-    }
+    ["stad", "stadK"].forEach(function (prefix) {
+        const bowl = get(prefix + "Bowl");
+        if (!bowl) return;
+        const row = STADIUM[player.stadium.level];
+        const next = STADIUM[player.stadium.level + 1];
+        ensureYard();
+        bowl.setAttribute("data-lv", String(player.stadium.level));
+        bowl.setAttribute("data-mark", player.yard.lines ? "1" : "0");
+        const crew = get(prefix + "Crew");
+        if (crew) {
+            crew.textContent = t(player.yard.lines ? "linesOn" : "linesOff") + " · " + t(player.yard.staff ? "staffOn" : "staffOff");
+        }
+        const linesBtn = get(prefix + "Lines");
+        if (linesBtn) {
+            linesBtn.hidden = !!player.yard.lines;
+            linesBtn.textContent = t("linesBtn", { pay: money(YARD_COST.lines) });
+        }
+        const staffBtn = get(prefix + "Staff");
+        if (staffBtn) {
+            staffBtn.hidden = !!player.yard.staff;
+            staffBtn.textContent = t("staffBtn", { pay: money(YARD_COST.staff) });
+        }
+        const name = get(prefix + "Name");
+        if (name) name.textContent = t("stadName", { club: ui(player.club) });
+        const rank = get(prefix + "Rank");
+        if (rank) rank.textContent = t("stad" + player.stadium.level);
+        const seats = get(prefix + "Seats");
+        if (seats) seats.textContent = stadNum(row.seats);
+        const gate = get(prefix + "Gate");
+        if (gate) gate.textContent = money(row.gate);
+        const last = get(prefix + "Last");
+        if (last) {
+            last.textContent = player.stadium.crowd
+                ? t("stadLast", { n: stadNum(player.stadium.crowd), pay: money(player.stadium.pay || 0) })
+                : t("stadEmpty");
+        }
+        const btn = get(prefix + "Up");
+        if (!btn) return;
+        if (!next) {
+            btn.disabled = true;
+            btn.textContent = t("stadMax");
+        } else {
+            btn.disabled = false;
+            btn.textContent = t("stadUp", { pay: money(next.cost) });
+        }
+    });
 }
 
 function upgradeStadium() {
@@ -5481,7 +6259,9 @@ function takeStadiumGate(result) {
     const fill = result === "win" ? 0.92 : result === "draw" ? 0.74 : 0.58;
     const crowd = Math.round(row.seats * fill);
     const mul = result === "win" ? 1.25 : result === "draw" ? 1 : 0.7;
-    const pay = Math.max(1, Math.round(row.gate * mul));
+    ensureYard();
+    let pay = Math.max(1, Math.round(row.gate * mul));
+    if (!player.yard.staff) pay = Math.max(1, Math.round(pay * 0.5));
     player.stadium.crowd = crowd;
     player.stadium.pay = pay;
     player.respect = (player.respect || 0) + pay;
@@ -5962,6 +6742,8 @@ function startCareer() {
     }
     const position = get("position").value;
     player = newPlayer(name, position, selectedNation, selectedAvatar);
+    player.skin = selectedSkin;
+    player.hair = selectedHair;
     Sfx.start();
     showCareer();
     addLog(t("logCareerBorn", { name: player.name, pos: player.position, nation: nationLabel(player.nation) }));
@@ -6655,6 +7437,13 @@ function playMatch(useBribe) {
         }
         return;
     }
+    if (gearDue()) {
+        Sfx.error();
+        addLog(t("gearRust", { pay: money(gearCost()) }));
+        paintGear();
+        updateScheduleUI();
+        return;
+    }
     if (!matchDue()) {
         Sfx.error();
         addLog(t("logOnlyCal", { n: player.nextMatchWeek, opp: nextOppName() }));
@@ -6699,6 +7488,7 @@ function playMatch(useBribe) {
 
     player.energy -= MATCH_COST;
     player.matches += 1;
+    const rusted = gearDue();
     player.socPitchNeed = false;
     player.socSinceMatch = 0;
     advanceWeek();
@@ -6891,6 +7681,7 @@ function playMatch(useBribe) {
     gained += Math.round((fameValue() - 50) / 20);
     player.respect = (player.respect || 0) + Math.max(0, gained);
     const gate = takeStadiumGate(result);
+    const adPay = takeKitAd(result);
 
     let fameGain = result === "win" ? 4 : result === "draw" ? 2 : 1;
     if (conceded === 0) fameGain += 2;
@@ -6969,6 +7760,8 @@ function playMatch(useBribe) {
         }
         addLog(t("logCash", { pay: money(gained), total: money(player.respect) }));
         if (gate && gate.pay) addLog(t("stadCash", { n: stadNum(gate.crowd), pay: money(gate.pay) }));
+        if (adPay) addLog(t("kitAdPay", { name: kitPickName(KIT_ADS, player.kit.ad), pay: money(adPay) }));
+        if (rusted) addLog(t("gearLog"));
         if (fameDelta) {
             addLog(t(fameDelta > 0 ? "logFameUp" : "logFameDown", { n: fameDelta, rank: fameRank(fameValue()), val: fameValue() }));
         }
@@ -7012,6 +7805,11 @@ function stepBonus(row) {
 
 function transferTo(club) {
     Sfx.unlock();
+    if (!player || player.retired) {
+        Sfx.error();
+        addLog(t("logRetire"));
+        return;
+    }
     const list = isClub() ? LEAGUES : CLUBS;
     const fromReq = clubByName(player.club).required;
     const steps = list.filter(function (row) {
@@ -7090,6 +7888,11 @@ function updateClubs() {
             row.classList.add("passed");
             const mark = document.createElement("b");
             mark.textContent = isClub() ? t("passedClub") : t("passedPlayer");
+            row.appendChild(mark);
+        } else if (player.retired) {
+            row.classList.add("locked");
+            const mark = document.createElement("b");
+            mark.textContent = t("retiredBtn");
             row.appendChild(mark);
         } else if (overall >= club.required) {
             const button = document.createElement("button");
@@ -8057,7 +8860,7 @@ function bind() {
             if (!btn) return;
             Sfx.click();
             const key = btn.getAttribute("data-soc");
-            socialPane = key === "friends" || key === "subs" || key === "plan" ? key : "feed";
+            socialPane = key === "friends" || key === "plan" ? key : "feed";
             socialFocusId = "";
             renderSocial();
         });
@@ -8207,6 +9010,74 @@ function bind() {
     }
     const stadUp = get("stadUp");
     if (stadUp) stadUp.addEventListener("click", function () { Sfx.click(); upgradeStadium(); });
+    const stadKUp = get("stadKUp");
+    if (stadKUp) stadKUp.addEventListener("click", function () { Sfx.click(); upgradeStadium(); });
+    ["gearBuy", "stadGearBtn", "stadKGearBtn"].forEach(function (id) {
+        const btn = get(id);
+        if (btn) btn.addEventListener("click", function () { Sfx.click(); buyGear(); });
+    });
+    ["stadLines", "stadKLines"].forEach(function (id) {
+        const btn = get(id);
+        if (btn) btn.addEventListener("click", function () { Sfx.click(); buyYard("lines"); });
+    });
+    ["stadStaff", "stadKStaff"].forEach(function (id) {
+        const btn = get(id);
+        if (btn) btn.addEventListener("click", function () { Sfx.click(); buyYard("staff"); });
+    });
+    const shopModeBox = get("shopMode");
+    if (shopModeBox) {
+        shopModeBox.addEventListener("click", function (event) {
+            const btn = event.target.closest("[data-mode]");
+            if (!btn) return;
+            shopMode = btn.getAttribute("data-mode");
+            shopFilter = (SHOP_TABS[shopMode] || ["hair"])[0];
+            Sfx.click();
+            paintShop();
+        });
+    }
+    const shopTabs = get("shopTabs");
+    if (shopTabs) {
+        shopTabs.addEventListener("click", function (event) {
+            const btn = event.target.closest("[data-shop]");
+            if (!btn) return;
+            shopFilter = btn.getAttribute("data-shop");
+            Sfx.click();
+            paintShop();
+        });
+    }
+    const shopList = get("shopList");
+    if (shopList) {
+        shopList.addEventListener("click", function (event) {
+            const btn = event.target.closest("[data-buy]");
+            if (!btn) return;
+            buyWear(btn.getAttribute("data-buy"));
+        });
+    }
+    const skinPicks = get("skinPicks");
+    if (skinPicks) {
+        skinPicks.addEventListener("click", function (event) {
+            const btn = event.target.closest("[data-skin]");
+            if (!btn) return;
+            setSkin(btn.getAttribute("data-skin"));
+        });
+    }
+    ["hairPicks", "kitHair"].forEach(function (id) {
+        const box = get(id);
+        if (!box) return;
+        box.addEventListener("click", function (event) {
+            const btn = event.target.closest("[data-hair]");
+            if (!btn) return;
+            setHair(btn.getAttribute("data-hair"));
+        });
+    });
+    const kitCard = get("kitCard");
+    if (kitCard) {
+        kitCard.addEventListener("click", function (event) {
+            const btn = event.target.closest("[data-kit]");
+            if (!btn) return;
+            setKit(btn.getAttribute("data-kit"), btn.getAttribute("data-ink") || "");
+        });
+    }
     const tabs = get("careerTabs");
     if (tabs) {
         tabs.addEventListener("click", function (event) {

@@ -39,7 +39,7 @@
       #studioSplash .studio-tap{margin:28px 0 0;letter-spacing:.34em;text-transform:uppercase;font-size:11px;font-weight:800;color:#d4af37}
       #studioSplash .studio-line{width:min(220px,46vw);height:1px;margin:10px 0 6px;background:linear-gradient(90deg,transparent,#d4af37,transparent)}
     </style>
-    <link rel="stylesheet" href="style.css?v=128">
+    <link rel="stylesheet" href="style.css?v=147">
 </head>
 <body>
 
@@ -131,12 +131,10 @@
         <p class="social-bio" id="socialBio"></p>
         <div class="social-counts">
             <div><b id="socialFollowers">0</b><small data-i18n="socFollowers">подписчики</small></div>
-            <div id="socFollowBox"><b id="socialFollowing">0</b><small data-i18n="socFollowing">подписки</small></div>
             <div><b id="socialPostsN">0</b><small data-i18n="socPosts">посты</small></div>
         </div>
         <div class="soc-tabs" id="socTabs">
             <button type="button" data-soc="feed" class="on" data-i18n="socFeed">Лента</button>
-            <button type="button" data-soc="subs" data-i18n="socSubs">Подписки</button>
             <button type="button" data-soc="plan" data-i18n="socPlan">Тариф</button>
             <button type="button" data-soc="friends" data-i18n="socFriends">Друзья</button>
         </div>
@@ -352,6 +350,7 @@
         <small id="liveText"></small>
         <p class="live-only" id="liveOnly">Эксклюзивные карты только эти 4 дня</p>
         <div class="live-cards" id="liveCards"></div>
+        <p class="live-next" id="liveNext"></p>
         <button type="button" id="liveDraft" class="gold" data-i18n="draftOpen">Открыть драфт</button>
     </div>
 
@@ -365,8 +364,8 @@
         <button type="button" data-panel="train" data-i18n="tabTrain">Треня</button>
         <button type="button" data-panel="match" data-i18n="tabMatch">Матч</button>
         <button type="button" data-panel="club" id="tabClub">Клубы</button>
-        <button type="button" data-panel="bank" data-i18n="tabBank">Банк</button>
         <button type="button" data-panel="stad" data-i18n="tabStad">Стадион</button>
+        <button type="button" data-panel="shop" data-i18n="tabShop">Одежда</button>
         <button type="button" data-panel="more" data-i18n="tabMore">Ещё</button>
     </nav>
 
@@ -474,12 +473,14 @@
         <p id="savesRow" hidden><span data-i18n="saves">Сейвы</span>: <b id="saves">0</b></p>
         <p id="cleanRow" hidden><span data-i18n="cleans">Сухие матчи</span>: <b id="cleanSheets">0</b></p>
         <p id="gkConcededRow" hidden><span data-i18n="conceded">Пропущено</span>: <b id="gkConceded">0</b></p>
+        <p class="hint" id="gearHint" hidden></p>
+        <button type="button" id="gearBuy" class="gold" hidden>Ворота и мячи</button>
         <button type="button" id="matchBtn" class="gold">📅 ЖДИ ИГРОВОЙ ДЕНЬ</button>
         <button type="button" id="retireBtn" class="danger" data-i18n="retireBtn">Закончить карьеру</button>
     </div>
     </div>
 
-    <div class="panel" data-panel="bank">
+    <div class="panel" data-panel="bank" hidden>
     <div class="card">
         <h2 data-i18n="bankTitle">Банк</h2>
         <p class="hint" id="bankHint"></p>
@@ -505,6 +506,42 @@
     </div>
 
     <div class="panel" data-panel="club">
+    <div class="card" id="kitCard" hidden>
+        <p class="drop-kicker" data-i18n="kitKicker">СКЛАДКА</p>
+        <h2 data-i18n="kitTitle">Складка формы</h2>
+        <p class="hint" data-i18n="kitHint">Цвет футболки, шорт и гетр. Одна реклама — название по центру футболки.</p>
+        <div class="kit-preview" id="kitPreview"></div>
+        <p class="hint" id="kitLine"></p>
+        <p class="bank-line" data-i18n="shopSkin">Кожа</p>
+        <div class="kit-colors" id="kitSkin"></div>
+        <p class="bank-line" data-i18n="shopHairInk">Цвет волос</p>
+        <div class="kit-colors" id="kitHair"></div>
+        <p class="bank-line" data-i18n="kitShirt">Футболка</p>
+        <div class="kit-colors" id="kitShirt"></div>
+        <p class="bank-line" data-i18n="kitShorts">Шорты</p>
+        <div class="kit-colors" id="kitShorts"></div>
+        <p class="bank-line" data-i18n="kitSocks">Гетры</p>
+        <div class="kit-colors" id="kitSocks"></div>
+        <p class="bank-line" data-i18n="kitAd">Реклама · $60</p>
+        <div class="plan-row kit-picks" id="kitAds"></div>
+    </div>
+    <div class="card stad-card" id="stadClub" hidden>
+        <p class="drop-kicker" data-i18n="stadCol">КОЛОНКА</p>
+        <h2 id="stadKName">Стадион</h2>
+        <p class="hint" id="stadKRank"></p>
+        <div class="bowl" id="stadKBowl" data-lv="0">
+            <div class="bowl-pitch"></div>
+        </div>
+        <p class="bank-line"><span data-i18n="stadSeats">Места</span> <b id="stadKSeats">2 000</b></p>
+        <p class="bank-line"><span data-i18n="stadGate">Касса за матч</span> <b id="stadKGate">$8</b></p>
+        <p class="hint" id="stadKLast"></p>
+        <p class="hint" id="stadKCrew"></p>
+        <button type="button" id="stadKLines" class="gold">Купить разметку</button>
+        <button type="button" id="stadKStaff" class="gold">Нанять персонал</button>
+        <p class="hint" id="stadKGear"></p>
+        <button type="button" id="stadKGearBtn" class="gold" hidden>Ворота и мячи</button>
+        <button type="button" id="stadKUp" class="gold">Расширить</button>
+    </div>
     <div class="card" id="squadCard" hidden>
         <h2 data-i18n="squad">Состав</h2>
         <div class="voucher-bar" id="voucherBar">
@@ -563,7 +600,30 @@
         <p class="bank-line"><span data-i18n="stadSeats">Места</span> <b id="stadSeats">2 000</b></p>
         <p class="bank-line"><span data-i18n="stadGate">Касса за матч</span> <b id="stadGate">$8</b></p>
         <p class="hint" id="stadLast"></p>
+        <p class="hint" id="stadCrew"></p>
+        <button type="button" id="stadLines" class="gold">Купить разметку</button>
+        <button type="button" id="stadStaff" class="gold">Нанять персонал</button>
+        <p class="hint" id="stadGear"></p>
+        <button type="button" id="stadGearBtn" class="gold" hidden>Ворота и мячи</button>
         <button type="button" id="stadUp" class="gold">Расширить</button>
+    </div>
+    </div>
+
+    <div class="panel" data-panel="shop">
+    <div class="card">
+        <h2 data-i18n="shopTitle">Одежда</h2>
+        <p class="hint" data-i18n="shopHint">Кепка, куртка и часы надеваются вместе. На поле — бутсы, гетры и рукав.</p>
+        <p class="hint" id="shopWorn"></p>
+        <p class="bank-line" data-i18n="shopSkin">Кожа</p>
+        <div class="kit-colors" id="skinPicks"></div>
+        <p class="bank-line" data-i18n="shopHairInk">Цвет волос</p>
+        <div class="kit-colors" id="hairPicks"></div>
+        <div class="plan-row" id="shopMode">
+            <button type="button" data-mode="off" class="on">Официальный</button>
+            <button type="button" data-mode="game">Игровой</button>
+        </div>
+        <div class="plan-row" id="shopTabs"></div>
+        <div class="market-list" id="shopList"></div>
     </div>
     </div>
 
@@ -704,8 +764,8 @@
     </div>
 </div>
 
-<script src="audio.js?v=128" defer></script>
-<script src="loc.js?v=128" defer></script>
-<script src="game.js?v=128" defer></script>
+<script src="audio.js?v=147" defer></script>
+<script src="loc.js?v=147" defer></script>
+<script src="game.js?v=147" defer></script>
 </body>
 </html>

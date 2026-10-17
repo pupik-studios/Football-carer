@@ -481,6 +481,12 @@ h2 {
     margin-top: 4px;
 }
 
+.live-next {
+    margin: 0;
+    color: #f6e7b2;
+    font-size: 14px;
+}
+
 .live-upd > b {
     font-size: 32px;
     line-height: 1.05;
@@ -1091,6 +1097,10 @@ body.hot .hook span {
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
 }
 
+body.mode-club .career-tabs {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
 .career-tabs button {
     margin: 0;
     padding: 10px 4px;
@@ -1114,33 +1124,81 @@ body.hot .hook span {
 
 .bowl {
     position: relative;
-    height: 168px;
+    height: 210px;
     margin: 14px auto 8px;
-    border-radius: 90px;
-    background: #14110c;
-    border: 10px solid #3a3228;
-    box-shadow: inset 0 0 0 16px #241c12;
+    border-radius: 16px;
+    background: #1a140c;
+    border: 8px solid #3a3228;
+    box-shadow: inset 0 0 0 18px #2a2116;
     overflow: hidden;
 }
 
 .bowl-pitch {
     position: absolute;
-    left: 22%;
-    right: 22%;
-    top: 24%;
-    bottom: 24%;
-    border-radius: 46%;
-    border: 2px solid rgba(255, 255, 255, 0.75);
+    left: 8%;
+    right: 8%;
+    top: 12%;
+    bottom: 12%;
+    border-radius: 2px;
+    background: repeating-linear-gradient(90deg, #1c6b34 0 14px, #22803d 14px 28px);
+}
+
+.bowl[data-mark="1"] .bowl-pitch {
+    border: 2px solid rgba(247, 247, 242, 0.92);
     background:
-        linear-gradient(#e8f5e9, #e8f5e9) center / 2px 62% no-repeat,
-        linear-gradient(#e8f5e9, #e8f5e9) center / 46% 2px no-repeat,
-        repeating-linear-gradient(90deg, #1f7a3a 0 12px, #249144 12px 24px);
+        linear-gradient(#f7f7f2, #f7f7f2) 16% 50% / 2px 46% no-repeat,
+        linear-gradient(#f7f7f2, #f7f7f2) 84% 50% / 2px 46% no-repeat,
+        linear-gradient(#f7f7f2, #f7f7f2) 16% 27% / 16% 2px no-repeat,
+        linear-gradient(#f7f7f2, #f7f7f2) 16% 73% / 16% 2px no-repeat,
+        linear-gradient(#f7f7f2, #f7f7f2) 84% 27% / 16% 2px no-repeat,
+        linear-gradient(#f7f7f2, #f7f7f2) 84% 73% / 16% 2px no-repeat,
+        linear-gradient(#f7f7f2, #f7f7f2) center / 2px 100% no-repeat,
+        radial-gradient(circle at 50% 50%, transparent 14px, #f7f7f2 14px, #f7f7f2 16px, transparent 17px),
+        repeating-linear-gradient(90deg, #1c6b34 0 14px, #22803d 14px 28px);
 }
 
 .bowl[data-lv="1"] { border-color: #6b5428; }
 .bowl[data-lv="2"] { border-color: #8d6a1f; box-shadow: inset 0 0 0 16px #3a2a10; }
 .bowl[data-lv="3"] { border-color: #d4af37; box-shadow: inset 0 0 0 16px #4a3510, 0 0 22px rgba(212, 175, 55, 0.35); }
 .bowl[data-lv="4"] { border-color: #f6e7b8; box-shadow: inset 0 0 0 18px #5a4012, 0 0 28px rgba(255, 216, 61, 0.5); }
+
+.shop-preview {
+    width: 140px;
+    height: 246px;
+    margin: 8px auto;
+    border-radius: 18px;
+    overflow: hidden;
+    background: #0c1018;
+}
+
+.shop-preview svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+.shop-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 8px 0;
+}
+
+.shop-row span {
+    flex: 1;
+    text-align: left;
+    color: #f6f1e6;
+}
+
+#shopList:empty {
+    display: none;
+}
+
+.shop-row button {
+    width: auto;
+    min-width: 108px;
+    margin: 0;
+}
 
 .bank-line {
     display: flex;
@@ -1856,6 +1914,8 @@ button.bench-chip {
     width: 100px;
     height: 100px;
     border-radius: 50%;
+    overflow: hidden;
+    position: relative;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -2481,6 +2541,58 @@ body.injured .hook span {
     margin: 0;
     border-radius: 12px;
     font-weight: 800;
+}
+
+.kit-preview {
+    width: 120px;
+    height: 216px;
+    margin: 8px auto;
+}
+
+.kit-preview svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+.kit-colors {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 0 0 12px;
+}
+
+.kit-swatch {
+    width: 36px;
+    height: 36px;
+    min-height: 36px;
+    margin: 0;
+    padding: 0;
+    border-radius: 50%;
+    border: 2px solid rgba(255, 255, 255, 0.35);
+}
+
+.kit-swatch.on {
+    outline: 3px solid #d4af37;
+}
+
+.kit-picks {
+    flex-wrap: wrap;
+}
+
+.kit-picks button {
+    flex: 1 1 42%;
+    font-size: 13px;
+}
+
+#shopMode button,
+#shopTabs button {
+    flex: 1 1 30%;
+    font-size: 13px;
+}
+
+#shopTabs {
+    flex-wrap: wrap;
 }
 
 .plan-row button.on {
@@ -3113,11 +3225,77 @@ body.injured .hook span {
     height: 72px;
     border-radius: 50%;
     overflow: hidden;
+    position: relative;
     display: flex;
     align-items: center;
     justify-content: center;
     background: #1a1408;
     box-shadow: inset 0 0 0 3px #0c0e13, 0 0 0 1px #d4af37;
+    font-size: 36px;
+}
+
+.face-emoji {
+    font-size: 48px;
+    line-height: 1;
+    z-index: 1;
+}
+
+.face-hair {
+    position: absolute;
+    left: 22%;
+    top: 16%;
+    width: 56%;
+    height: 28%;
+    border-radius: 50% 50% 36% 36%;
+    z-index: 2;
+    pointer-events: none;
+}
+
+.kit-swatch.hair-own {
+    background: conic-gradient(#1c1917, #6b3a1f, #f0d078, #e04b2a, #d9d4cc, #1c1917);
+}
+
+.kit-swatch.hair-bald {
+    background: repeating-linear-gradient(135deg, #f4efe6, #f4efe6 4px, #a8a29e 4px, #a8a29e 5px);
+}
+
+.pick-grid button.kit-swatch {
+    width: 36px;
+    min-width: 36px;
+    min-height: 36px;
+    padding: 0;
+}
+
+.face-cap {
+    position: absolute;
+    left: 14%;
+    top: 10%;
+    width: 68%;
+    height: 30%;
+    z-index: 2;
+    pointer-events: none;
+}
+
+.face-flower {
+    position: absolute;
+    right: 8%;
+    top: 46%;
+    z-index: 3;
+    font-size: 18px;
+    line-height: 1;
+    pointer-events: none;
+}
+
+.fut .avatar .face-emoji {
+    font-size: 42px;
+}
+
+.social-ava .face-emoji {
+    font-size: 36px;
+}
+
+.social-ava .face-flower {
+    font-size: 14px;
 }
 
 .avatar svg,
