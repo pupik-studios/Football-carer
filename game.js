@@ -366,34 +366,13 @@ function headSvg(wear, skin) {
 }
 
 const FACE_PEOPLE = ["👨", "👦", "🧔"];
-const HAIR_TONES = [
-    { id: "own" },
-    { id: "black", ink: "#1c1917" },
-    { id: "brown", ink: "#6b3a1f" },
-    { id: "blond", ink: "#f0d078" },
-    { id: "red", ink: "#e04b2a" },
-    { id: "gray", ink: "#d9d4cc" },
-    { id: "bald" }
-];
-
-function hairTone(id) {
-    for (let i = 0; i < HAIR_TONES.length; i++) {
-        if (HAIR_TONES[i].id === id) return HAIR_TONES[i];
-    }
-    return HAIR_TONES[0];
-}
-
-function hairId() {
-    const id = player && player.hair;
-    return hairTone(id).id === id ? id : "own";
-}
 
 function personBase(value) {
     const bare = String(value || "").replace(/[\u{1F3FB}-\u{1F3FF}]/gu, "");
     return FACE_PEOPLE.indexOf(bare) >= 0 ? bare : "👨";
 }
 
-function personEmoji(value, skin, hair) {
+function personEmoji(value, skin) {
     const mod = {
         "#f6d7c3": "\u{1F3FB}",
         "#e7b48a": "\u{1F3FC}",
@@ -402,19 +381,13 @@ function personEmoji(value, skin, hair) {
         "#5c3317": "\u{1F3FF}",
         "#3b2212": "\u{1F3FF}"
     };
-    const tone = mod[skin || skinInk()] || "\u{1F3FD}";
-    const base = personBase(value);
-    if ((hair || "own") === "bald") return base + tone + "\u200D\u{1F9B2}";
-    return base + tone;
+    return personBase(value) + (mod[skin || skinInk()] || "\u{1F3FD}");
 }
 
 function playerFaceHtml(value) {
     const look = wearLook() || {};
-    const hair = hairId();
-    const tone = hairTone(hair);
-    const dye = tone.ink ? '<span class="face-hair" style="background:' + tone.ink + '"></span>' : "";
     const flower = look.flower ? '<span class="face-flower">' + look.flower + "</span>" : "";
-    return '<span class="face-emoji">' + personEmoji(value, skinInk(), hair) + "</span>" + dye + flower;
+    return '<span class="face-emoji">' + personEmoji(value, skinInk()) + "</span>" + flower;
 }
 
 function setFace(el, value, asClub) {
@@ -717,15 +690,11 @@ function kitSvg(kit) {
         ? '<text x="50" y="92" text-anchor="middle" font-size="' + size + '" font-family="sans-serif" font-weight="800" fill="' + ink + '"' + (label.length > 8 ? ' textLength="24" lengthAdjust="spacingAndGlyphs"' : "") + ">" + label + "</text>"
         : "";
     const look = wearLook() || {};
-    const hair = hairId();
-    const dye = hairTone(hair).ink;
-    const who = personEmoji(player && player.avatar, skinInk(), hair);
-    const hairShape = dye ? '<ellipse cx="50" cy="28" rx="13" ry="7" fill="' + dye + '"/>' : "";
+    const who = personEmoji(player && player.avatar, skinInk());
     const flower = look.flower ? '<text x="76" y="46" font-size="14">' + look.flower + "</text>" : "";
     return '<svg viewBox="0 0 100 180" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">'
         + '<rect width="100" height="180" fill="#0c1018"/>'
         + '<text x="50" y="40" text-anchor="middle" font-size="26">' + who + "</text>"
-        + hairShape
         + flower
         + '<path d="M38 66 L24 80 L30 86 L42 72z" fill="' + shirt + '"/>'
         + '<path d="M62 66 L76 80 L70 86 L58 72z" fill="' + shirt + '"/>'
@@ -752,36 +721,6 @@ function paintSkin() {
             return '<button type="button" class="kit-swatch' + on + '" data-kit="skin" data-ink="' + color + '" style="background:' + color + '"></button>';
         }).join("");
     }
-    paintHair();
-}
-
-function hairSwatchHtml() {
-    const current = hairId();
-    return HAIR_TONES.map(function (tone) {
-        const on = current === tone.id ? " on" : "";
-        const kind = tone.id === "own" ? " hair-own" : (tone.id === "bald" ? " hair-bald" : "");
-        const bg = tone.ink ? ' style="background:' + tone.ink + '"' : "";
-        return '<button type="button" class="kit-swatch' + kind + on + '" data-hair="' + tone.id + '"' + bg + "></button>";
-    }).join("");
-}
-
-function paintHair() {
-    const html = hairSwatchHtml();
-    const shop = get("hairPicks");
-    if (shop) shop.innerHTML = html;
-    const kit = get("kitHair");
-    if (kit) kit.innerHTML = html;
-}
-
-function setHair(id) {
-    if (!player || !player.name || hairTone(id).id !== id || player.hair === id) return;
-    player.hair = id;
-    Sfx.click();
-    paintHair();
-    if (isClub()) paintKit();
-    updateHeader();
-    renderSocial();
-    save();
 }
 
 function setSkin(color) {
@@ -1015,7 +954,6 @@ let selectedMode = "player";
 let selectedNation = "KZ";
 let selectedAvatar = "⚽";
 let selectedSkin = "#e7b48a";
-let selectedHair = "own";
 let marketFilter = "all";
 let marketPos = "all";
 let lastOvr = null;
@@ -3869,7 +3807,6 @@ function load() {
         if (typeof player.fame === "number") player.fame = Math.min(player.fame, fameCap());
         if (!player.nation) player.nation = "KZ";
         if (SKIN_TONES.indexOf(player.skin) < 0) player.skin = "#e7b48a";
-        if (hairTone(player.hair).id !== player.hair) player.hair = "own";
         if (player.ntCalled && !player.ntFixtures) seedInternationals();
         if (!player.avatar) {
             player.avatar = player.mode === "club" ? "🏟️" : (AVATARS[player.position] || "⚽");
@@ -5981,7 +5918,6 @@ function renderCreatePicks() {
         if (label) label.textContent = t("avatar");
         if (FACE_PEOPLE.indexOf(selectedAvatar) < 0) selectedAvatar = "👨";
         if (SKIN_TONES.indexOf(selectedSkin) < 0) selectedSkin = "#e7b48a";
-        if (hairTone(selectedHair).id !== selectedHair) selectedHair = "own";
         SKIN_TONES.forEach(function (color) {
             const btn = document.createElement("button");
             btn.type = "button";
@@ -5994,22 +5930,10 @@ function renderCreatePicks() {
             });
             avatarBox.appendChild(btn);
         });
-        HAIR_TONES.forEach(function (tone) {
-            const btn = document.createElement("button");
-            btn.type = "button";
-            btn.className = "kit-swatch" + (tone.id === "own" ? " hair-own" : (tone.id === "bald" ? " hair-bald" : "")) + (tone.id === selectedHair ? " on" : "");
-            if (tone.ink) btn.style.background = tone.ink;
-            btn.addEventListener("click", function () {
-                Sfx.click();
-                selectedHair = tone.id;
-                renderCreatePicks();
-            });
-            avatarBox.appendChild(btn);
-        });
         FACE_PEOPLE.forEach(function (face) {
             const btn = document.createElement("button");
             btn.type = "button";
-            btn.textContent = personEmoji(face, selectedSkin, selectedHair);
+            btn.textContent = personEmoji(face, selectedSkin);
             if (face === selectedAvatar) btn.classList.add("on");
             btn.addEventListener("click", function () {
                 Sfx.click();
@@ -6743,7 +6667,6 @@ function startCareer() {
     const position = get("position").value;
     player = newPlayer(name, position, selectedNation, selectedAvatar);
     player.skin = selectedSkin;
-    player.hair = selectedHair;
     Sfx.start();
     showCareer();
     addLog(t("logCareerBorn", { name: player.name, pos: player.position, nation: nationLabel(player.nation) }));
@@ -9061,15 +8984,6 @@ function bind() {
             setSkin(btn.getAttribute("data-skin"));
         });
     }
-    ["hairPicks", "kitHair"].forEach(function (id) {
-        const box = get(id);
-        if (!box) return;
-        box.addEventListener("click", function (event) {
-            const btn = event.target.closest("[data-hair]");
-            if (!btn) return;
-            setHair(btn.getAttribute("data-hair"));
-        });
-    });
     const kitCard = get("kitCard");
     if (kitCard) {
         kitCard.addEventListener("click", function (event) {

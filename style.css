@@ -3240,25 +3240,6 @@ body.injured .hook span {
     z-index: 1;
 }
 
-.face-hair {
-    position: absolute;
-    left: 22%;
-    top: 16%;
-    width: 56%;
-    height: 28%;
-    border-radius: 50% 50% 36% 36%;
-    z-index: 2;
-    pointer-events: none;
-}
-
-.kit-swatch.hair-own {
-    background: conic-gradient(#1c1917, #6b3a1f, #f0d078, #e04b2a, #d9d4cc, #1c1917);
-}
-
-.kit-swatch.hair-bald {
-    background: repeating-linear-gradient(135deg, #f4efe6, #f4efe6 4px, #a8a29e 4px, #a8a29e 5px);
-}
-
 .pick-grid button.kit-swatch {
     width: 36px;
     min-width: 36px;
