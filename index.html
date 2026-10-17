@@ -39,7 +39,7 @@
       #studioSplash .studio-tap{margin:28px 0 0;letter-spacing:.34em;text-transform:uppercase;font-size:11px;font-weight:800;color:#d4af37}
       #studioSplash .studio-line{width:min(220px,46vw);height:1px;margin:10px 0 6px;background:linear-gradient(90deg,transparent,#d4af37,transparent)}
     </style>
-    <link rel="stylesheet" href="style.css?v=148">
+    <link rel="stylesheet" href="style.css?v=167">
 </head>
 <body>
 
@@ -55,6 +55,30 @@
         <button type="button" data-style="plain" data-i18n="stylePlain">Обычный</button>
         <button type="button" data-style="arcade" data-i18n="styleArcade">Аркада</button>
         <button type="button" data-style="board" data-i18n="styleBoard">Табло</button>
+        <div id="deskBox" class="admin-box">
+            <div id="deskLock" class="admin-code">
+                <input id="deskPass" type="password" inputmode="numeric" maxlength="12" data-i18n-placeholder="deskPass" placeholder="пароль" autocomplete="off" spellcheck="false">
+                <button type="button" id="deskGo">ОК</button>
+            </div>
+            <div id="deskTools" hidden>
+                <p data-i18n="deskTitle">Пульт</p>
+                <button type="button" id="deskDay" data-i18n="adminDay">+1 день</button>
+                <button type="button" id="deskSkip" data-i18n="adminSkip">+4 дня</button>
+                <button type="button" id="deskMoney" data-i18n="adminMoney">+$10 000</button>
+                <button type="button" id="deskDraft" data-i18n="adminDraft">+1 ваучер</button>
+                <div class="admin-code" id="deskFaceRow">
+                    <button type="button" id="deskFaceBack" data-i18n="deskFaceBack">−1 год</button>
+                    <b id="deskFaceAge">16</b>
+                    <button type="button" id="deskFaceFwd" data-i18n="deskFaceFwd">+1 год</button>
+                </div>
+                <div class="admin-code">
+                    <span data-i18n="adminPoolA">Пул A %</span>
+                    <input id="deskPool" type="number" min="0" max="100" value="6">
+                    <button type="button" id="deskPoolSet">ОК</button>
+                </div>
+            </div>
+            <p class="hint" id="deskNote"></p>
+        </div>
     </div>
 </div>
 
@@ -461,6 +485,21 @@
             <button type="button" data-plan="defend" data-i18n="plan_defend">Оборона</button>
         </div>
         <p class="hint" id="planHint">Баланс: обычный матч.</p>
+        <div class="card bet-card" id="betCard">
+            <h2 data-i18n="betTitle">Ставки</h2>
+            <p class="hint" id="betHint"></p>
+            <div class="plan-row" id="betPick">
+                <button type="button" data-bet="win">Победа</button>
+                <button type="button" data-bet="draw">Ничья</button>
+                <button type="button" data-bet="loss">Поражение</button>
+            </div>
+            <div class="plan-row" id="betStake">
+                <button type="button" data-stake="50">$50</button>
+                <button type="button" data-stake="200">$200</button>
+                <button type="button" data-stake="500">$500</button>
+            </div>
+            <button type="button" id="betGo" class="gold">Поставить</button>
+        </div>
         <div class="match-grid" id="matchGrid"></div>
         <p class="save-meta" id="saveHint">💾 Автосохранение каждые 20 сек</p>
         <p class="last-match" id="lastMatch">Пока нет матчей</p>
@@ -512,8 +551,6 @@
         <p class="hint" data-i18n="kitHint">Цвет футболки, шорт и гетр. Одна реклама — название по центру футболки.</p>
         <div class="kit-preview" id="kitPreview"></div>
         <p class="hint" id="kitLine"></p>
-        <p class="bank-line" data-i18n="shopSkin">Кожа</p>
-        <div class="kit-colors" id="kitSkin"></div>
         <p class="bank-line" data-i18n="kitShirt">Футболка</p>
         <div class="kit-colors" id="kitShirt"></div>
         <p class="bank-line" data-i18n="kitShorts">Шорты</p>
@@ -582,6 +619,12 @@
         <div id="market" class="market-list"></div>
     </div>
 
+    <div class="card" id="buyoutCard" hidden>
+        <h2 data-i18n="buyoutTitle">Выкуп</h2>
+        <p class="hint" id="buyoutHint"></p>
+        <div id="buyoutList" class="market-list"></div>
+        <button type="button" id="buyoutBtn" class="gold">Выкупить · $2000</button>
+    </div>
     <div class="card">
         <h2 id="transfersTitle">Трансферы</h2>
         <div id="clubs"></div>
@@ -612,8 +655,6 @@
         <h2 data-i18n="shopTitle">Одежда</h2>
         <p class="hint" data-i18n="shopHint">Кепка, куртка и часы надеваются вместе. На поле — бутсы, гетры и рукав.</p>
         <p class="hint" id="shopWorn"></p>
-        <p class="bank-line" data-i18n="shopSkin">Кожа</p>
-        <div class="kit-colors" id="skinPicks"></div>
         <div class="plan-row" id="shopMode">
             <button type="button" data-mode="off" class="on">Официальный</button>
             <button type="button" data-mode="game">Игровой</button>
@@ -717,9 +758,9 @@
         </div>
         <p class="hint" id="promoHintCareer" data-i18n="promoHintCareer">+100 000 $ · один раз · эта карьера, не FC3</p>
     </div>
-    <div class="card">
+    <div class="card" id="auctionCareerCard" hidden>
         <h2 data-i18n="auction">Аукцион ЧМ</h2>
-        <p class="hint" data-i18n="auctionHint">Собери 4-3-3 из случайных игроков ЧМ 1994–2026. Отдельный режим, карьеру не ломает.</p>
+        <p class="hint" data-i18n="auctionHint">Только клуб. $4000, дальше по одному. Выпавшие игроки встают в состав. Радужные — эксклюзив.</p>
         <button type="button" id="openAuctionBtn" class="gold" data-i18n="openAuction">🏆 ОТКРЫТЬ АУКЦИОН</button>
     </div>
     <div class="card records-card">
@@ -750,18 +791,17 @@
         <h1 data-i18n="auction">Аукцион ЧМ</h1>
     </header>
     <div class="card">
-        <p class="hint" data-i18n="auctionHow">Жми ИГРОК — один легенда за раз, строго в свою позицию (Неймар только LW). 1 перекрутка той же позиции. ЗАНОВО — новый состав.</p>
+        <p class="hint" data-i18n="auctionHow">Плати $4000 и крути по одному. Перекрут слота бесплатный. Когда состав полный, следующая команда снова $4000. Радужные карты — эксклюзив.</p>
         <p class="meta" id="auctionMeta">Пусто · перекруток: 1</p>
         <div class="pitch auction-pitch" id="auctionPitch"></div>
         <div class="train-grid auction-actions">
-            <button type="button" id="auctionRollAll" class="gold" data-i18n="player">ИГРОК</button>
-            <button type="button" id="auctionReset" class="danger" data-i18n="reset">ЗАНОВО</button>
+            <button type="button" id="auctionRollAll" class="gold">Крутить · $4000</button>
         </div>
     </div>
 </div>
 
-<script src="audio.js?v=148" defer></script>
-<script src="loc.js?v=148" defer></script>
-<script src="game.js?v=148" defer></script>
+<script src="audio.js?v=167" defer></script>
+<script src="loc.js?v=167" defer></script>
+<script src="game.js?v=167" defer></script>
 </body>
 </html>

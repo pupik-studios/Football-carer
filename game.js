@@ -365,11 +365,20 @@ function headSvg(wear, skin) {
         + "</svg>";
 }
 
-const FACE_PEOPLE = ["👨", "👦", "🧔"];
+const FACE_PEOPLE = ["👦", "👨", "🧔", "🧓", "👴"];
+
+function ageFace(age) {
+    age = typeof age === "number" ? age : 16;
+    if (age < 19) return "👦";
+    if (age < 28) return "👨";
+    if (age < 50) return "🧔";
+    if (age < 58) return "🧓";
+    return "👴";
+}
 
 function personBase(value) {
     const bare = String(value || "").replace(/[\u{1F3FB}-\u{1F3FF}]/gu, "");
-    return FACE_PEOPLE.indexOf(bare) >= 0 ? bare : "👨";
+    return FACE_PEOPLE.indexOf(bare) >= 0 ? bare : "👦";
 }
 
 function personEmoji(value, skin) {
@@ -384,10 +393,17 @@ function personEmoji(value, skin) {
     return personBase(value) + (mod[skin || skinInk()] || "\u{1F3FD}");
 }
 
-function playerFaceHtml(value) {
+function shownFaceAge() {
+    if (!player) return 16;
+    if (typeof player.faceAge === "number" && player.faceAge >= 16) return player.faceAge;
+    return typeof player.age === "number" ? player.age : 16;
+}
+
+function playerFaceHtml() {
     const look = wearLook() || {};
     const flower = look.flower ? '<span class="face-flower">' + look.flower + "</span>" : "";
-    return '<span class="face-emoji">' + personEmoji(value, skinInk()) + "</span>" + flower;
+    const face = player && player.name && !isClub() ? ageFace(shownFaceAge()) : "👨";
+    return '<span class="face-emoji">' + personEmoji(face, skinInk()) + "</span>" + flower;
 }
 
 function setFace(el, value, asClub) {
@@ -686,24 +702,19 @@ function kitSvg(kit) {
     const ink = inkOn(shirt);
     const label = kit.ad ? svgText(kitPickName(KIT_ADS, kit.ad)) : "";
     const size = label.length > 11 ? 6 : label.length > 8 ? 7 : 9;
-    const adText = label
-        ? '<text x="50" y="92" text-anchor="middle" font-size="' + size + '" font-family="sans-serif" font-weight="800" fill="' + ink + '"' + (label.length > 8 ? ' textLength="24" lengthAdjust="spacingAndGlyphs"' : "") + ">" + label + "</text>"
+    const sponsor = label
+        ? '<text x="50" y="84" text-anchor="middle" font-size="' + size + '" font-family="sans-serif" font-weight="800" fill="' + ink + '"' + (label.length > 8 ? ' textLength="28" lengthAdjust="spacingAndGlyphs"' : "") + ">" + label + "</text>"
         : "";
-    const look = wearLook() || {};
-    const who = personEmoji(player && player.avatar, skinInk());
-    const flower = look.flower ? '<text x="76" y="46" font-size="14">' + look.flower + "</text>" : "";
-    return '<svg viewBox="0 0 100 180" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">'
-        + '<rect width="100" height="180" fill="#0c1018"/>'
-        + '<text x="50" y="40" text-anchor="middle" font-size="26">' + who + "</text>"
-        + flower
-        + '<path d="M38 66 L24 80 L30 86 L42 72z" fill="' + shirt + '"/>'
-        + '<path d="M62 66 L76 80 L70 86 L58 72z" fill="' + shirt + '"/>'
-        + '<path d="M40 62h20l4 46H36z" fill="' + shirt + '"/>'
-        + adText
-        + '<path d="M36 108h13l-2 18H38z" fill="' + shorts + '"/>'
-        + '<path d="M51 108h13l-2 18H53z" fill="' + shorts + '"/>'
-        + '<rect x="38" y="126" width="8" height="16" fill="' + socks + '"/>'
-        + '<rect x="54" y="126" width="8" height="16" fill="' + socks + '"/>'
+    return '<svg viewBox="0 0 100 168" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">'
+        + '<rect width="100" height="168" fill="#0c1018"/>'
+        + '<path d="M34 52 L16 72 L24 80 L40 62z" fill="' + shirt + '"/>'
+        + '<path d="M66 52 L84 72 L76 80 L60 62z" fill="' + shirt + '"/>'
+        + '<path d="M36 50h28l6 52H30z" fill="' + shirt + '"/>'
+        + sponsor
+        + '<path d="M30 102h16l-2 18H32z" fill="' + shorts + '"/>'
+        + '<path d="M54 102h16l-2 18H56z" fill="' + shorts + '"/>'
+        + '<rect x="34" y="120" width="10" height="22" rx="3" fill="' + socks + '"/>'
+        + '<rect x="56" y="120" width="10" height="22" rx="3" fill="' + socks + '"/>'
         + "</svg>";
 }
 
@@ -741,7 +752,7 @@ function paintKit() {
     if (!isClub()) return;
     ensureKit();
     const preview = get("kitPreview");
-    if (preview) preview.innerHTML = kitSvg(player.kit);
+    if (preview) preview.innerHTML = '<div class="kit-figure">' + kitSvg(player.kit) + "</div>";
     const line = get("kitLine");
     if (line) {
         line.textContent = player.kit.ad ? kitPickName(KIT_ADS, player.kit.ad) : "";
@@ -2639,6 +2650,16 @@ const DROP_MS = 4 * 24 * 60 * 60 * 1000;
 const DROP_START = Date.UTC(2026, 9, 8);
 const CLOCK_KEY = "fc-clock";
 
+function poolARate() {
+    try {
+        const raw = localStorage.getItem("fc-pool-a");
+        if (raw == null || raw === "") return 0.06;
+        const n = Number(raw);
+        if (n >= 0 && n <= 100) return n / 100;
+    } catch (e) {}
+    return 0.06;
+}
+
 function gameNow() {
     let extra = 0;
     try { extra = Number(localStorage.getItem(CLOCK_KEY)) || 0; } catch (e) {}
@@ -2771,8 +2792,21 @@ function draftPool(round, picked, run) {
     return ids;
 }
 
+function wcId(src) {
+    return "wc-" + String(src && src.wc || 0) + "-" + String(src && src.name || "").replace(/\s+/g, "");
+}
+
+function wcById(id) {
+    if (!id || String(id).indexOf("wc-") !== 0 || typeof WC_STARS === "undefined") return null;
+    const hit = WC_STARS.find(function (star) { return wcId(star) === id; });
+    if (!hit) return null;
+    const row = copyStar(hit);
+    row.id = id;
+    return row;
+}
+
 function starCard(id) {
-    return exclusiveById(id) || TRANSFER_STARS.find(function (star) { return star.id === id; }) || everyStar().find(function (star) { return star.id === id; }) || null;
+    return exclusiveById(id) || TRANSFER_STARS.find(function (star) { return star.id === id; }) || everyStar().find(function (star) { return star.id === id; }) || wcById(id) || null;
 }
 
 function futTier(star) {
@@ -3143,7 +3177,7 @@ function spinDraft() {
     const pityB = player.draftPityB - 1;
     const roll = Math.random();
     let pool = "C";
-    if (pityA <= 0 || roll < 0.06) pool = "A";
+    if (pityA <= 0 || roll < poolARate()) pool = "A";
     else if (pityB <= 0 || roll < 0.28) pool = "B";
     if (!pools[pool].length) pool = pools.B.length ? "B" : "C";
     const ready = (pools[pool] || []).filter(function (row) { return row && row.id && row.name && row.ovr; });
@@ -3990,6 +4024,8 @@ function updateHeader() {
     if (get("weekLine")) get("weekLine").hidden = !clubMode;
     const shopTab = document.querySelector('#careerTabs [data-panel="shop"]');
     if (shopTab) shopTab.hidden = clubMode;
+    const aucCard = get("auctionCareerCard");
+    if (aucCard) aucCard.hidden = !clubMode;
     setFace(get("avatar"), clubMode ? player.name : (player.avatar || "p0"), clubMode, clubMode ? null : wearLook());
     if (get("careerTitle")) {
         get("careerTitle").textContent = clubMode ? t("myClub") : t("myCareer");
@@ -5811,6 +5847,8 @@ function renderAll() {
     paintTale();
     maybeTale();
     renderSocial();
+    paintBet();
+    paintBuyout();
     paintUnread();
     maybeCallUp();
     maybeGrantBallon();
@@ -5882,7 +5920,7 @@ function selectMode(mode) {
         const nat = nationById(selectedNation);
         get("clubCity").placeholder = t("cityEg", { city: nationCity(nat) });
     } else {
-        selectedAvatar = "👨";
+        selectedAvatar = "👦";
         get("playerName").focus();
     }
     renderCreatePicks();
@@ -5915,8 +5953,8 @@ function renderCreatePicks() {
     avatarBox.innerHTML = "";
     const label = get("avatarLabel");
     if (selectedMode !== "club") {
-        if (label) label.textContent = t("avatar");
-        if (FACE_PEOPLE.indexOf(selectedAvatar) < 0) selectedAvatar = "👨";
+        if (label) label.textContent = t("shopSkin");
+        selectedAvatar = "👦";
         if (SKIN_TONES.indexOf(selectedSkin) < 0) selectedSkin = "#e7b48a";
         SKIN_TONES.forEach(function (color) {
             const btn = document.createElement("button");
@@ -5930,18 +5968,10 @@ function renderCreatePicks() {
             });
             avatarBox.appendChild(btn);
         });
-        FACE_PEOPLE.forEach(function (face) {
-            const btn = document.createElement("button");
-            btn.type = "button";
-            btn.textContent = personEmoji(face, selectedSkin);
-            if (face === selectedAvatar) btn.classList.add("on");
-            btn.addEventListener("click", function () {
-                Sfx.click();
-                selectedAvatar = face;
-                renderCreatePicks();
-            });
-            avatarBox.appendChild(btn);
-        });
+        const preview = document.createElement("span");
+        preview.className = "age-face";
+        preview.textContent = personEmoji(ageFace(16), selectedSkin);
+        avatarBox.appendChild(preview);
         return;
     }
     if (label) label.textContent = t("avatar");
@@ -6491,6 +6521,7 @@ function advanceWeek() {
     if (nextAge > player.age) {
         player.age = nextAge;
         addLog(t("logBday", { n: player.age }));
+        updateHeader();
         Sfx.ding();
         if (player.age >= 30) {
             addLog(t("logOver30"));
@@ -7315,6 +7346,7 @@ function startOnlineFromMenu() {
 function skipInjuredMatch() {
     Sfx.unlock();
     if (!player.name || matchBusy || !isInjured() || !matchDue()) return;
+    voidBet();
     matchBusy = true;
     ensureCalendar();
     const fixture = pendingFixture();
@@ -7340,6 +7372,173 @@ function skipInjuredMatch() {
     addLog(t("logSkip", { opp: opponent, label: injuryLabel() }));
     scheduleNextMatch();
     matchBusy = false;
+    renderAll();
+    save();
+}
+
+const BUYOUT = 2000;
+let betPick = "win";
+let betStake = 50;
+
+function betOpen() {
+    return !!(player && player.bet && typeof player.bet.stake === "number");
+}
+
+function betOdds(pick) {
+    const ovr = getOverall();
+    const opp = (clubByName(player.club).required || 50);
+    const edge = (ovr - opp) / 18;
+    const raw = pick === "win" ? 2.35 - edge * 0.7 : pick === "loss" ? 2.15 + edge * 0.85 : 3.1;
+    return Math.round(clamp(raw, 1.4, 4.6) * 10) / 10;
+}
+
+function paintBet() {
+    const card = get("betCard");
+    if (!card) return;
+    const on = !!(player && player.name && !player.retired);
+    card.hidden = !on;
+    if (!on) return;
+    const hint = get("betHint");
+    const go = get("betGo");
+    if (betOpen()) {
+        const bet = player.bet;
+        if (hint) hint.textContent = t("betWait", { pick: t("bet_" + bet.pick), pay: money(bet.stake), odds: bet.odds });
+        if (go) go.disabled = true;
+    } else {
+        if (hint) hint.textContent = t("betHint");
+        if (go) {
+            go.disabled = false;
+            go.textContent = t("betGo", { pay: money(betStake), pick: t("bet_" + betPick), odds: betOdds(betPick) });
+        }
+    }
+    document.querySelectorAll("#betPick button").forEach(function (btn) {
+        btn.classList.toggle("on", btn.getAttribute("data-bet") === betPick);
+        btn.disabled = betOpen();
+        const pick = btn.getAttribute("data-bet");
+        btn.textContent = t("bet_" + pick) + " · ×" + betOdds(pick);
+    });
+    document.querySelectorAll("#betStake button").forEach(function (btn) {
+        btn.classList.toggle("on", Number(btn.getAttribute("data-stake")) === betStake);
+        btn.disabled = betOpen();
+    });
+}
+
+function placeBet() {
+    if (!player || !player.name || player.retired || betOpen()) {
+        Sfx.error();
+        return;
+    }
+    if ((player.respect || 0) < betStake) {
+        Sfx.error();
+        addLog(t("betNeed", { pay: money(betStake) }));
+        return;
+    }
+    const odds = betOdds(betPick);
+    player.respect -= betStake;
+    player.bet = { pick: betPick, stake: betStake, odds: odds, due: player.nextMatchWeek };
+    Sfx.click();
+    addLog(t("logBetOn", { pick: t("bet_" + betPick), pay: money(betStake), odds: odds }));
+    updateRespect();
+    paintBet();
+    save();
+}
+
+function settleBet(result) {
+    if (!betOpen()) return;
+    const bet = player.bet;
+    player.bet = null;
+    if (bet.pick === result) {
+        const pay = Math.round(bet.stake * bet.odds);
+        player.respect = (player.respect || 0) + pay;
+        addLog(t("logBetWin", { pay: money(pay) }));
+        Sfx.ding();
+    } else {
+        addLog(t("logBetLose", { pay: money(bet.stake) }));
+    }
+}
+
+function voidBet() {
+    if (!betOpen()) return;
+    const stake = player.bet.stake;
+    player.respect = (player.respect || 0) + stake;
+    player.bet = null;
+    addLog(t("logBetBack", { pay: money(stake) }));
+}
+
+function boughtClubs() {
+    if (!Array.isArray(player.boughtClubs)) player.boughtClubs = [];
+    return player.boughtClubs;
+}
+
+function ownsClub(name) {
+    return boughtClubs().indexOf(name) >= 0;
+}
+
+function paintBuyout() {
+    const card = get("buyoutCard");
+    if (!card) return;
+    const show = !!(player && player.name && !isClub() && !player.retired);
+    card.hidden = !show;
+    if (!show) return;
+    const mates = matesForClub(player.club);
+    const list = get("buyoutList");
+    const owned = ownsClub(player.club);
+    if (list) {
+        list.innerHTML = "";
+        if (!mates.length) {
+            const empty = document.createElement("p");
+            empty.className = "hint";
+            empty.textContent = t("buyoutEmpty");
+            list.appendChild(empty);
+        } else {
+            mates.forEach(function (star) {
+                const row = document.createElement("div");
+                row.className = "market-row";
+                const who = document.createElement("div");
+                who.className = "who";
+                who.textContent = (star.flag ? star.flag + " " : "") + shown(star);
+                const meta = document.createElement("small");
+                meta.textContent = star.pos + " · " + star.ovr;
+                who.appendChild(meta);
+                row.appendChild(who);
+                list.appendChild(row);
+            });
+        }
+    }
+    const hint = get("buyoutHint");
+    if (hint) hint.textContent = t("buyoutHint", { club: ui(player.club), n: mates.length });
+    const btn = get("buyoutBtn");
+    if (!btn) return;
+    if (owned) {
+        btn.disabled = true;
+        btn.textContent = t("buyoutYours");
+    } else if (!mates.length) {
+        btn.disabled = true;
+        btn.textContent = t("buyoutWait");
+    } else {
+        btn.disabled = false;
+        btn.textContent = t("buyoutBtn", { pay: money(BUYOUT) });
+    }
+}
+
+function buyoutTeam() {
+    if (!player || !player.name || isClub() || player.retired) return;
+    if (ownsClub(player.club)) return;
+    const mates = matesForClub(player.club);
+    if (!mates.length) {
+        Sfx.error();
+        return;
+    }
+    if ((player.respect || 0) < BUYOUT) {
+        Sfx.error();
+        addLog(t("buyoutNeed", { pay: money(BUYOUT) }));
+        return;
+    }
+    player.respect -= BUYOUT;
+    boughtClubs().push(player.club);
+    Sfx.transferBig(70);
+    addLog(t("logBuyout", { club: ui(player.club), n: mates.length, pay: money(BUYOUT) }));
+    showAura("transfer", "−" + money(BUYOUT), ui(player.club), t("buyoutYours"), "#ffd83d", 1800);
     renderAll();
     save();
 }
@@ -7430,6 +7629,12 @@ function playMatch(useBribe) {
             const avg = starters.reduce(function (sum, star) { return sum + star.ovr; }, 0) / starters.length;
             const depth = Math.min(SQUAD_BENCH, xi.bench.length) * 0.02;
             squadBoost = ((avg - 76) / 28) * (starters.length / SQUAD_XI) + depth;
+        }
+    } else if (ownsClub(player.club)) {
+        const mates = matesForClub(player.club);
+        if (mates.length) {
+            const avg = mates.reduce(function (sum, star) { return sum + (star.ovr || 60); }, 0) / mates.length;
+            squadBoost = ((avg - 70) / 40) * 0.45;
         }
     }
     const delta = clamp((ovr - diff) / 22 + (fameValue() - 50) / 140 + squadBoost, -0.9, 1.25);
@@ -7548,6 +7753,7 @@ function playMatch(useBribe) {
     let result = "draw";
     if (scored > conceded) result = "win";
     else if (scored < conceded) result = "loss";
+    settleBet(result);
 
     if (result === "win") {
         player.streak = (player.streak || 0) + 1;
@@ -8112,7 +8318,7 @@ function updateSquad() {
         }
         const cell = document.createElement(slot.star ? "button" : "div");
         cell.type = slot.star ? "button" : undefined;
-        cell.className = "pitch-slot" + (slot.star ? " filled" : "");
+        cell.className = "pitch-slot" + (slot.star ? " filled" : "") + (slot.star && slot.star.exclusive ? " exclusive" : "");
         if (slot.star) {
             cell.setAttribute("data-role", slot.star.id);
             const name = document.createElement("b");
@@ -8291,6 +8497,7 @@ const PROMO_CODE = "MADRID.CR7.ISTAS";
 const PROMO_PAY = 100000;
 const PROMO_PENDING = "fc-promo-madrid";
 const AUCTION_KEY = "fc-auction-wc-v1";
+const AUCTION_PAY = 4000;
 const AUCTION_SLOTS = ["GK", "LB", "CB", "CB", "RB", "CM", "CM", "CM", "LW", "ST", "RW"];
 const AUCTION_LINES = [["GK"], ["LB", "CB", "CB", "RB"], ["CM", "CM", "CM"], ["LW", "ST", "RW"]];
 const WC_STARS = [
@@ -8426,7 +8633,7 @@ const WC_STARS = [
     { name: "Сарр", en: "Sarr", pos: "RW", flag: "🇸🇳", nation: "Сенегал", wc: 2022, ovr: 83 }
 ];
 
-let auction = { slots: AUCTION_SLOTS.map(function () { return null; }), rerolls: 1 };
+let auction = { slots: AUCTION_SLOTS.map(function () { return null; }), rerolls: 1, open: false };
 
 function slotFamily(pos) {
     if (pos === "GK") return "GK";
@@ -8499,7 +8706,7 @@ function posFitsSlot(playerPos, slotPos) {
     return slotFamily(playerPos) === slotFamily(slotPos);
 }
 function copyStar(src) {
-    return { name: src.name, en: src.en || "", pos: src.pos, flag: src.flag, nation: src.nation, wc: src.wc, ovr: src.ovr };
+    return { id: src.id || wcId(src), name: src.name, en: src.en || "", pos: src.pos, flag: src.flag, nation: src.nation, wc: src.wc, ovr: src.ovr, exclusive: !!src.exclusive };
 }
 function usedStars(exceptIdx) {
     const used = {};
@@ -8511,7 +8718,7 @@ function usedStars(exceptIdx) {
 function starsForSlot(slotIdx, exceptIdx) {
     const slotPos = AUCTION_SLOTS[slotIdx];
     const used = usedStars(exceptIdx);
-    return WC_STARS.filter(function (s) {
+    return WC_STARS.concat(EXCLUSIVES).filter(function (s) {
         return !used[starKey(s)] && posFitsSlot(s.pos, slotPos);
     });
 }
@@ -8544,8 +8751,10 @@ function loadAuction() {
         if (!raw) return;
         const data = JSON.parse(raw);
         if (!data || !Array.isArray(data.slots) || data.slots.length !== 11) return;
-        auction = { slots: data.slots, rerolls: data.rerolls === 0 ? 0 : 1 };
+        auction = { slots: data.slots, rerolls: data.rerolls === 0 ? 0 : 1, open: data.open === true };
         repairAuctionSlots();
+        auction.slots.forEach(function (star) { if (star && !star.id) star.id = wcId(star); });
+        if (auctionFilled() >= 11) auction.open = false;
     } catch (err) {}
 }
 function saveAuction() {
@@ -8571,7 +8780,7 @@ function renderAuction() {
             const p = auction.slots[idx];
             const slot = document.createElement("button");
             slot.type = "button";
-            slot.className = "pitch-slot" + (p ? " filled" : "");
+            slot.className = "pitch-slot" + (p ? " filled" : "") + (p && p.exclusive ? " exclusive" : "");
             slot.setAttribute("data-auc", String(idx));
             if (p) {
                 const name = document.createElement("b");
@@ -8590,8 +8799,39 @@ function renderAuction() {
     if (meta) {
         meta.textContent = t("auctionMetaLine", { n: auctionFilled(), r: auction.rerolls });
     }
+    const rollBtn = get("auctionRollAll");
+    if (rollBtn && !auctionBusy) {
+        rollBtn.textContent = auction.open && auctionFilled() < 11
+            ? t("player")
+            : t("dreamSpin", { pay: money(AUCTION_PAY) });
+    }
 }
+function dropAuctionStars() {
+    if (!player || !Array.isArray(player.squad)) return;
+    const ids = {};
+    auction.slots.forEach(function (star) { if (star && star.id) ids[star.id] = true; });
+    player.squad = player.squad.filter(function (id) { return !ids[id]; });
+}
+
+function keepAuctionStar(star) {
+    if (!isClub() || !star || !star.id) return false;
+    if (!Array.isArray(player.squad)) player.squad = [];
+    if (player.squad.indexOf(star.id) >= 0) return true;
+    if (player.squad.length >= SQUAD_XI + SQUAD_BENCH) {
+        addLog(t("logSquadFull"));
+        return false;
+    }
+    player.squad.push(star.id);
+    save();
+    return true;
+}
+
 function showAuction() {
+    if (!player || !player.name || !isClub()) {
+        Sfx.error();
+        alert(t("auctionClubOnly"));
+        return;
+    }
     hideStudioSplash();
     Sfx.unlock();
     Sfx.click();
@@ -8609,7 +8849,7 @@ function showAuction() {
 let auctionBusy = false;
 function paintSlotFace(el, p, spinning) {
     if (!el) return;
-    el.className = "pitch-slot filled" + (spinning ? " spinning" : "");
+    el.className = "pitch-slot filled" + (p && p.exclusive ? " exclusive" : "") + (spinning ? " spinning" : "");
     el.innerHTML = "";
     const name = document.createElement("b");
     name.textContent = p.flag + " " + shown(p);
@@ -8637,7 +8877,13 @@ function auctionReveal(idx, star, isReroll) {
         if (n < ticks) return;
         clearInterval(timer);
         if (isReroll) auction.rerolls = 0;
+        const prev = auction.slots[idx];
+        if (prev && prev.id && player && Array.isArray(player.squad)) {
+            player.squad = player.squad.filter(function (id) { return id !== prev.id; });
+        }
         auction.slots[idx] = copyStar(star);
+        if (auctionFilled() === 11) auction.open = false;
+        keepAuctionStar(auction.slots[idx]);
         saveAuction();
         renderAuction();
         const done = document.querySelector('[data-auc="' + idx + '"]');
@@ -8669,6 +8915,46 @@ function auctionRollSlot(idx) {
     }
     auctionReveal(idx, pickArr(pool), true);
 }
+function auctionPay() {
+    const meta = get("auctionMeta");
+    if (!player || !player.name || !isClub()) {
+        Sfx.error();
+        if (meta) meta.textContent = t("auctionClubOnly");
+        return false;
+    }
+    if ((player.respect || 0) < AUCTION_PAY) {
+        Sfx.error();
+        if (meta) meta.textContent = t("dreamNeed", { pay: money(AUCTION_PAY) });
+        return false;
+    }
+    player.respect -= AUCTION_PAY;
+    save();
+    updateRespect();
+    return true;
+}
+
+function auctionBlank() {
+    return AUCTION_SLOTS.map(function () { return null; });
+}
+
+function auctionBuySession() {
+    if (auctionBusy) return;
+    if (auction.open && auctionFilled() < 11) {
+        auctionRollOne();
+        return;
+    }
+    if (!auctionPay()) return;
+    dropAuctionStars();
+    auction.slots = auctionBlank();
+    save();
+    auction.open = true;
+    auction.rerolls = 1;
+    saveAuction();
+    renderAuction();
+    showAura("transfer", "−" + money(AUCTION_PAY), t("dreamTitle"), t("dreamOpen"), "#ffd83d", 1400);
+    Sfx.ding();
+}
+
 function auctionRollOne() {
     if (auctionBusy) return;
     Sfx.unlock();
@@ -8689,9 +8975,17 @@ function auctionRollOne() {
     auctionReveal(idx, pickArr(pool), false);
 }
 function auctionReset() {
+    if (auctionBusy) return;
     Sfx.unlock();
     Sfx.click();
-    auction = { slots: AUCTION_SLOTS.map(function () { return null; }), rerolls: 1 };
+    if (auctionFilled() === 11) {
+        if (!auctionPay()) return;
+        auction.open = true;
+    }
+    dropAuctionStars();
+    auction.slots = auctionBlank();
+    save();
+    auction.rerolls = 1;
     auctionBusy = false;
     saveAuction();
     renderAuction();
@@ -8714,9 +9008,14 @@ function bind() {
     on("modeAuction", "click", showAuction);
     on("auctionBack", "click", function () {
         Sfx.click();
+        if (player && player.name && isClub()) {
+            showCareer();
+            showPanel("club");
+            return;
+        }
         showModeScreen();
     });
-    on("auctionRollAll", "click", auctionRollOne);
+    on("auctionRollAll", "click", auctionBuySession);
     on("auctionReset", "click", auctionReset);
     on("auctionPitch", "click", function (event) {
         const slot = event.target.closest("[data-auc]");
@@ -8837,6 +9136,30 @@ function bind() {
     on("treatBtn", "click", treatInjury);
     on("wcBtn", "click", playWorldCup);
     get("matchBtn").addEventListener("click", function () { playMatch(false); });
+    const betPickBox = get("betPick");
+    if (betPickBox) {
+        betPickBox.addEventListener("click", function (event) {
+            const btn = event.target.closest("[data-bet]");
+            if (!btn || betOpen()) return;
+            betPick = btn.getAttribute("data-bet");
+            paintBet();
+            Sfx.click();
+        });
+    }
+    const betStakeBox = get("betStake");
+    if (betStakeBox) {
+        betStakeBox.addEventListener("click", function (event) {
+            const btn = event.target.closest("[data-stake]");
+            if (!btn || betOpen()) return;
+            betStake = Number(btn.getAttribute("data-stake")) || 50;
+            paintBet();
+            Sfx.click();
+        });
+    }
+    const betGo = get("betGo");
+    if (betGo) betGo.addEventListener("click", placeBet);
+    const buyoutBtn = get("buyoutBtn");
+    if (buyoutBtn) buyoutBtn.addEventListener("click", buyoutTeam);
     get("bribeBtn").addEventListener("click", function () { playMatch(true); });
     get("onlineBtn").addEventListener("click", openOnlineLobby);
     get("newCareerBtn").addEventListener("click", newCareer);
@@ -9166,6 +9489,105 @@ function applyStyle(id) {
     });
 }
 
+function deskNote(text) {
+    const note = get("deskNote");
+    if (note) note.textContent = text || "";
+}
+
+function tryDesk() {
+    const input = get("deskPass");
+    const pass = input ? String(input.value || "").trim() : "";
+    if (pass !== "120115") {
+        const tools = get("deskTools");
+        if (tools) tools.hidden = true;
+        if (input) input.value = "";
+        deskNote(t("deskBad"));
+        Sfx.error();
+        return;
+    }
+    const lock = get("deskLock");
+    const tools = get("deskTools");
+    if (lock) lock.hidden = true;
+    if (tools) tools.hidden = false;
+    if (input) input.value = "";
+    const pool = get("deskPool");
+    if (pool) pool.value = String(Math.round(poolARate() * 100));
+    paintDeskFace();
+    deskNote("");
+    Sfx.ding();
+}
+
+function paintDeskFace() {
+    const el = get("deskFaceAge");
+    if (el) el.textContent = String(shownFaceAge());
+}
+
+function deskFaceStep(dir) {
+    if (!deskCareer()) return;
+    if (isClub()) {
+        deskNote(t("deskFaceClub"));
+        Sfx.error();
+        return;
+    }
+    const career = typeof player.age === "number" ? player.age : 16;
+    let age = Math.max(16, Math.min(60, shownFaceAge() + dir));
+    if (age === career) delete player.faceAge;
+    else player.faceAge = age;
+    updateHeader();
+    renderSocial();
+    paintDeskFace();
+    save();
+    deskNote(t("deskFaceSet", { n: age }));
+    Sfx.click();
+}
+
+function deskCareer() {
+    if (player && player.name) return true;
+    deskNote(t("adminNoCareer"));
+    Sfx.error();
+    return false;
+}
+
+function deskShift(days) {
+    shiftClock(days * 24 * 60 * 60 * 1000);
+    if (player && player.name && isClub()) syncDraftWindow();
+    updateDrop();
+    deskNote(t("adminTime"));
+    Sfx.ding();
+}
+
+function deskMoney() {
+    if (!deskCareer()) return;
+    player.respect = (player.respect || 0) + 10000;
+    updateRespect();
+    save();
+    deskNote(t("adminCash"));
+    Sfx.ding();
+}
+
+function deskVoucher() {
+    if (!deskCareer()) return;
+    ensureDraft();
+    player.draftTokens += 1;
+    save();
+    updateDrop();
+    const voucherCount = get("voucherCount");
+    if (voucherCount) voucherCount.textContent = t("voucherHave", { n: player.draftTokens });
+    deskNote(t("adminTok"));
+    Sfx.ding();
+}
+
+function deskPoolSet() {
+    const input = get("deskPool");
+    let n = Math.round(Number(input && input.value));
+    if (!(n >= 0)) n = 6;
+    n = Math.max(0, Math.min(100, n));
+    if (input) input.value = String(n);
+    try { localStorage.setItem("fc-pool-a", String(n)); } catch (e) {}
+    deskNote(t("adminPoolASet", { n: n }));
+    Sfx.click();
+}
+
 document.addEventListener("DOMContentLoaded", function () {
     ["promoCode", "promoCodeCareer"].forEach(function (id) {
         const el = get(id);
@@ -9186,7 +9608,7 @@ document.addEventListener("DOMContentLoaded", function () {
         });
         stylePanel.addEventListener("click", function (event) {
             event.stopPropagation();
-            const btn = event.target.closest("[data-style]");
+            const btn = event.target.closest("button[data-style]");
             if (!btn) return;
             event.stopPropagation();
             Sfx.click();
@@ -9226,11 +9648,30 @@ document.addEventListener("DOMContentLoaded", function () {
             if (event.target.closest("#stylePanel") || event.target.closest("#styleBtn")) return;
             stylePanel.hidden = true;
         });
+        const deskGo = get("deskGo");
+        const deskPass = get("deskPass");
+        if (deskGo) deskGo.addEventListener("click", function () { tryDesk(); });
+        if (deskPass) deskPass.addEventListener("keydown", function (event) {
+            if (event.key === "Enter") tryDesk();
+        });
+        const deskDay = get("deskDay");
+        const deskSkip = get("deskSkip");
+        const deskMoneyBtn = get("deskMoney");
+        const deskDraft = get("deskDraft");
+        const deskPoolBtn = get("deskPoolSet");
+        if (deskDay) deskDay.addEventListener("click", function () { deskShift(1); });
+        if (deskSkip) deskSkip.addEventListener("click", function () { deskShift(4); });
+        if (deskMoneyBtn) deskMoneyBtn.addEventListener("click", deskMoney);
+        if (deskDraft) deskDraft.addEventListener("click", deskVoucher);
+        if (deskPoolBtn) deskPoolBtn.addEventListener("click", deskPoolSet);
+        const deskFaceBack = get("deskFaceBack");
+        const deskFaceFwd = get("deskFaceFwd");
+        if (deskFaceBack) deskFaceBack.addEventListener("click", function () { deskFaceStep(-1); });
+        if (deskFaceFwd) deskFaceFwd.addEventListener("click", function () { deskFaceStep(1); });
     }
     syncMuteButton();
     try {
         localStorage.removeItem("fc-admin");
-        localStorage.removeItem("fc-pool-a");
     } catch (e) {}
     paintLive();
     setInterval(paintLive, 1000);

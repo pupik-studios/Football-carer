@@ -161,6 +161,12 @@ h2 {
     margin: 8px 0 10px;
 }
 
+.bet-card {
+    margin-top: 14px;
+    padding: 14px;
+    box-shadow: none;
+}
+
 .card {
     background:
         linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 28%),
@@ -716,7 +722,15 @@ h2 {
 .fut-card.silver { border-color: #d5d5d5; background: linear-gradient(180deg, #3a3a3e, #16161a); }
 .fut-card.gold { border-color: #ffd83d; }
 .fut-card.special { border-color: #7ec8ff; background: linear-gradient(180deg, #12304a, #0a1828); }
-.fut-card.exclusive { border-color: #c084fc; background: linear-gradient(180deg, #2a1848, #120818); }
+.fut-card.exclusive,
+.pitch-slot.exclusive {
+    border: 2px solid transparent;
+    background:
+        linear-gradient(#1a1028, #120818) padding-box,
+        linear-gradient(90deg, #ff4d6d, #ffb020, #ffe566, #3dff8a, #4db8ff, #c084fc, #ff4d6d) border-box;
+    background-size: auto, 300% 100%;
+    animation: rainbow-move 5s linear infinite;
+}
 
 .cup-track {
     display: flex;
@@ -807,6 +821,24 @@ h2 {
     background: none;
     color: inherit;
     padding: 0;
+}
+
+#deskFaceRow {
+    margin-top: 8px;
+}
+
+#deskFaceRow button {
+    flex: 1;
+    width: auto;
+    margin: 0;
+    min-height: 40px;
+}
+
+#deskFaceAge {
+    min-width: 36px;
+    text-align: center;
+    font-size: 16px;
+    color: #f6f1e6;
 }
 
 #adminPoolA {
@@ -2544,15 +2576,47 @@ body.injured .hook span {
 }
 
 .kit-preview {
-    width: 120px;
-    height: 216px;
+    width: 140px;
+    height: 236px;
     margin: 8px auto;
 }
 
-.kit-preview svg {
+.kit-figure {
+    position: relative;
+    width: 100%;
+    height: 100%;
+}
+
+.kit-preview svg,
+.kit-figure svg {
     width: 100%;
     height: 100%;
     display: block;
+}
+
+.kit-head {
+    position: absolute;
+    z-index: 2;
+    left: 50%;
+    top: -2px;
+    width: 68px;
+    height: 58px;
+    margin-left: -34px;
+    overflow: hidden;
+    font-size: 68px;
+    line-height: 1;
+    text-align: center;
+    pointer-events: none;
+}
+
+.kit-flower {
+    position: absolute;
+    z-index: 3;
+    right: 18px;
+    top: 28px;
+    font-size: 16px;
+    line-height: 1;
+    pointer-events: none;
 }
 
 .kit-colors {
@@ -3240,6 +3304,16 @@ body.injured .hook span {
     z-index: 1;
 }
 
+.age-face {
+    font-size: 40px;
+    line-height: 1;
+    width: 56px;
+    height: 56px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
 .pick-grid button.kit-swatch {
     width: 36px;
     min-width: 36px;
@@ -3268,7 +3342,8 @@ body.injured .hook span {
 }
 
 .fut .avatar .face-emoji {
-    font-size: 42px;
+    font-size: 78px;
+    line-height: 1;
 }
 
 .social-ava .face-emoji {
