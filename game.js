@@ -947,6 +947,7 @@ const SEASON_XI = {
         { id: "s26-guler", name: "Арда Гюлер", en: "Arda Guler", pos: "CAM", ovr: 86, flag: "🇹🇷", season: "2026/27" },
         { id: "s26-vinicius", name: "Винисиус", en: "Vinicius", pos: "LW", ovr: 90, flag: "🇧🇷", season: "2026/27" },
         { id: "s26-bellingham", name: "Беллингем", en: "Bellingham", pos: "CM", ovr: 89, flag: "🇬🇧", season: "2026/27" },
+        { id: "s26-diomande", name: "Диаманде", en: "Diomande", pos: "RW", ovr: 86, flag: "🇨🇮", season: "2026/27" },
         { id: "s26-mbappe", name: "Мбаппе", en: "Mbappe", pos: "ST", ovr: 91, flag: "🇫🇷", season: "2026/27" }
     ],
     "Liverpool": [
@@ -2623,9 +2624,10 @@ const EXCLUSIVES = [
     { id: "x-mbappe", name: "Мбаппе", en: "Mbappé", pos: "ST", ovr: 94, flag: "🇫🇷", club: "Real Madrid", exclusive: true },
     { id: "x-vini", name: "Винисиус", en: "Vinicius", pos: "LW", ovr: 90, flag: "🇧🇷", club: "Real Madrid", exclusive: true },
     { id: "x-bellingham", name: "Беллингем", en: "Bellingham", pos: "CM", ovr: 89, flag: "🇬🇧", club: "Real Madrid", exclusive: true },
+    { id: "x-diomande", name: "Диаманде", en: "Diomande", pos: "RW", ovr: 86, flag: "🇨🇮", club: "Real Madrid", exclusive: true },
     { id: "x-lautaro", name: "Лаутаро", en: "Lautaro", pos: "ST", ovr: 90, flag: "🇦🇷", club: "Интер", exclusive: true },
     { id: "x-barella", name: "Барелла", en: "Barella", pos: "CM", ovr: 87, flag: "🇮🇹", club: "Интер", exclusive: true },
-    { id: "x-leao", name: "Леау", en: "Leão", pos: "LW", ovr: 88, flag: "🇵🇹", club: "Milan", exclusive: true },
+    { id: "x-leao", name: "Леау", en: "Leão", pos: "LW", ovr: 88, flag: "🇵🇹", club: "Галатасарай", exclusive: true },
     { id: "x-musiala", name: "Мусиала", en: "Musiala", pos: "CAM", ovr: 91, flag: "🇩🇪", club: "Bayern", exclusive: true },
     { id: "x-kane", name: "Кейн", en: "Kane", pos: "ST", ovr: 90, flag: "🇬🇧", club: "Bayern", exclusive: true },
     { id: "x-kimmich", name: "Киммих", en: "Kimmich", pos: "CM", ovr: 88, flag: "🇩🇪", club: "Bayern", exclusive: true },
@@ -2638,16 +2640,15 @@ const EXCLUSIVES = [
 ];
 const DRAFTS = [
     { id: "duo", title: "dropLinkT", text: "dropLink", reward: ["x-messi", "x-modric"], tone: "dusk" },
-    { id: "ucl", title: "dropUclT", text: "dropUcl", reward: ["x-mbappe", "x-vini", "x-bellingham"], tone: "rainbow", ms: 8 * 24 * 60 * 60 * 1000 },
-    { id: "serie", title: "dropSerieT", text: "dropSerie", reward: ["x-lautaro", "x-barella", "x-leao"], tone: "serie" },
-    { id: "bund", title: "dropBundT", text: "dropBund", reward: ["x-musiala", "x-kane", "x-kimmich"], tone: "bund" },
-    { id: "liga", title: "dropLigaT", text: "dropLiga", reward: ["x-yamal", "x-pedri", "x-raphinha"], tone: "liga" },
-    { id: "epl", title: "dropEplT", text: "dropEpl", reward: ["x-salah", "x-haaland", "x-vandijk"], tone: "epl" }
+    { id: "ucl", title: "dropUclT", text: "dropUcl", reward: ["x-cr7", "x-bellingham", "x-diomande"], tone: "rainbow" },
+    { id: "serie", title: "dropSerieT", text: "dropSerie", reward: ["x-lautaro", "x-barella"], tone: "serie" },
+    { id: "liga", title: "dropLigaT", text: "dropLiga", reward: ["x-yamal", "x-pedri", "x-raphinha"], tone: "liga" }
 ];
+const DROP_SOON = { id: "soon", title: "dropSoonT", text: "dropSoon", reward: [], tone: "dusk", soon: true };
 const DRAFT_XI = ["GK", "LB", "CB", "CB", "RB", "CM", "CAM", "CM", "LW", "ST", "RW"];
 const DRAFT_LINE_IX = [[8, 9, 10], [5, 6, 7], [1, 2, 3, 4], [0]];
-const DROP_MS = 4 * 24 * 60 * 60 * 1000;
-const DROP_START = Date.UTC(2026, 9, 8);
+const DROP_MS = 5 * 24 * 60 * 60 * 1000;
+const DROP_START = Date.UTC(2026, 9, 14);
 const CLOCK_KEY = "fc-clock";
 
 function poolARate() {
@@ -2682,24 +2683,21 @@ function dropLength(drop) {
 
 function dropNow() {
     const gone = Math.max(0, gameNow() - DROP_START);
-    let cycle = 0;
-    DRAFTS.forEach(function (drop) { cycle += dropLength(drop); });
-    const loops = Math.floor(gone / cycle);
-    let rest = gone % cycle;
+    let rest = gone;
     for (let i = 0; i < DRAFTS.length; i++) {
         const len = dropLength(DRAFTS[i]);
         if (rest < len) {
             const left = len - rest;
             return {
                 drop: DRAFTS[i],
-                n: loops * DRAFTS.length + i,
+                n: i,
                 days: Math.max(1, Math.ceil(left / 86400000)),
                 left: left
             };
         }
         rest -= len;
     }
-    return { drop: DRAFTS[0], n: loops * DRAFTS.length, days: 4, left: DROP_MS };
+    return { drop: DROP_SOON, n: DRAFTS.length, days: 0, left: 0, soon: true };
 }
 
 const PITY_A = 25;
@@ -2732,6 +2730,10 @@ function syncDraftWindow() {
     const mark = now.drop.id + ":" + now.n;
     if (player.draftMark === mark) return;
     player.draftMark = mark;
+    if (now.drop.soon) {
+        save();
+        return;
+    }
     player.draftTokens += 1;
     addLog(t("logDraft", { name: t(now.drop.title) }));
     save();
@@ -2867,12 +2869,14 @@ function paintLive() {
     if (kicker) kicker.textContent = t("liveKicker");
     if (title) title.textContent = t(now.drop.title);
     if (text) text.textContent = t(now.drop.text);
-    if (left) left.textContent = liveClock();
+    if (left) left.textContent = now.drop.soon ? "" : liveClock();
     const only = get("liveOnly");
-    if (only) only.textContent = now.drop.tone === "rainbow" ? t("liveOnlyLong") : t("liveOnly");
+    if (only) only.textContent = now.drop.soon ? "" : (now.drop.tone === "rainbow" ? t("liveOnlyLong") : t("liveOnly"));
     const next = get("liveNext");
-    if (next) next.textContent = t("dropNext", { n: now.days, t: player && player.name ? player.draftTokens : 0 });
-    if (bar) bar.className = "live-upd tone-" + (now.drop.tone || "dusk");
+    if (next) next.textContent = now.drop.soon ? "" : t("dropNext", { n: now.days, t: player && player.name ? player.draftTokens : 0 });
+    const open = get("liveDraft");
+    if (open) open.hidden = !!now.drop.soon;
+    if (bar) bar.className = "live-upd tone-" + (now.drop.soon ? "dusk" : (now.drop.tone || "dusk"));
     paintExclusiveCards(get("liveCards"));
     const mark = now.drop.id + ":" + now.n;
     const flipped = liveMark && liveMark !== mark;
@@ -3161,6 +3165,11 @@ function keepStar(star) {
 function spinDraft() {
     ensureDraft();
     if (!isClub()) return;
+    if (dropNow().drop.soon) {
+        player.draftNote = t("dropSoon");
+        renderDraft();
+        return;
+    }
     if (player.draftOffer) return;
     if (player.draftTokens < 1) {
         player.draftNote = t("draftNeed", { n: dropNow().days });
@@ -4281,8 +4290,10 @@ const CLUB_MATES = {
         { id: "adeyemi", name: "Адейеми", en: "Adeyemi", pos: "LW", ovr: 82, flag: "🇩🇪" },
         { id: "kobel", name: "Кобель", en: "Kobel", pos: "GK", ovr: 87, flag: "🇨🇭" }
     ],
+    "Галатасарай": [
+        { id: "leao", name: "Леау", en: "Leao", pos: "LW", ovr: 86, flag: "🇵🇹" }
+    ],
     "AC Milan": [
-        { id: "leao", name: "Леау", en: "Leao", pos: "LW", ovr: 86, flag: "🇵🇹" },
         { id: "theo", name: "Тео Эрнандес", en: "Theo Hernandez", pos: "LB", ovr: 85, flag: "🇫🇷" },
         { id: "giroud", name: "Жиру", en: "Giroud", pos: "ST", ovr: 82, flag: "🇫🇷" },
         { id: "maignan", name: "Меньян", en: "Maignan", pos: "GK", ovr: 87, flag: "🇫🇷" }
@@ -8536,7 +8547,7 @@ const WC_STARS = [
     { name: "Анри", en: "Henry", pos: "ST", flag: "🇫🇷", nation: "Франция", wc: 2006, ovr: 91 },
     { name: "Клозе", en: "Klose", pos: "ST", flag: "🇩🇪", nation: "Германия", wc: 2006, ovr: 88 },
     { name: "Лам", en: "Lahm", pos: "RB", flag: "🇩🇪", nation: "Германия", wc: 2006, ovr: 88 },
-    { name: "Криштиану", en: "Ronaldo", pos: "LW", flag: "🇵🇹", nation: "Португалия", wc: 2006, ovr: 92 },
+    { name: "Криштиану", en: "Ronaldo", pos: "LW", flag: "🇵🇹", nation: "Португалия", wc: 2006, ovr: 99 },
     { name: "Джеррард", en: "Gerrard", pos: "CM", flag: "🏴󠁧󠁢󠁥󠁮󠁧󠁿", nation: "Англия", wc: 2006, ovr: 89 },
     { name: "Лэмпард", en: "Lampard", pos: "CM", flag: "🏴󠁧󠁢󠁥󠁮󠁧󠁿", nation: "Англия", wc: 2006, ovr: 88 },
     { name: "Иньеста", en: "Iniesta", pos: "CAM", flag: "🇪🇸", nation: "Испания", wc: 2010, ovr: 91 },
@@ -8571,9 +8582,9 @@ const WC_STARS = [
     { name: "Модрич", en: "Modric", pos: "CM", flag: "🇭🇷", nation: "Хорватия", wc: 2022, ovr: 88 },
     { name: "Хакими", en: "Hakimi", pos: "RB", flag: "🇲🇦", nation: "Марокко", wc: 2022, ovr: 87 },
     { name: "Винисиус", en: "Vinicius", pos: "LW", flag: "🇧🇷", nation: "Бразилия", wc: 2022, ovr: 88 },
-    { name: "Криштиану", en: "Ronaldo", pos: "ST", flag: "🇵🇹", nation: "Португалия", wc: 2014, ovr: 95 },
-    { name: "Криштиану", en: "Ronaldo", pos: "ST", flag: "🇵🇹", nation: "Португалия", wc: 2018, ovr: 94 },
-    { name: "Криштиану", en: "Ronaldo", pos: "ST", flag: "🇵🇹", nation: "Португалия", wc: 2022, ovr: 91 },
+    { name: "Криштиану", en: "Ronaldo", pos: "ST", flag: "🇵🇹", nation: "Португалия", wc: 2014, ovr: 99 },
+    { name: "Криштиану", en: "Ronaldo", pos: "ST", flag: "🇵🇹", nation: "Португалия", wc: 2018, ovr: 99 },
+    { name: "Криштиану", en: "Ronaldo", pos: "ST", flag: "🇵🇹", nation: "Португалия", wc: 2022, ovr: 99 },
     { name: "Кейн", en: "Kane", pos: "ST", flag: "🏴󠁧󠁢󠁥󠁮󠁧󠁿", nation: "Англия", wc: 2022, ovr: 89 },
     { name: "Ямаль", en: "Yamal", pos: "RW", flag: "🇪🇸", nation: "Испания", wc: 2026, ovr: 89 },
     { name: "Беллингем", en: "Bellingham", pos: "CM", flag: "🏴󠁧󠁢󠁥󠁮󠁧󠁿", nation: "Англия", wc: 2026, ovr: 91 },

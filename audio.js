@@ -22,6 +22,21 @@ const Sfx = (() => {
             musicGain = ctx.createGain();
             musicGain.gain.value = 0.16;
             musicGain.connect(master);
+            const ear = ctx.listener;
+            if (ear.positionX) {
+                ear.positionX.value = 0;
+                ear.positionY.value = 1.6;
+                ear.positionZ.value = 10;
+                ear.forwardX.value = 0;
+                ear.forwardY.value = -0.15;
+                ear.forwardZ.value = -1;
+                ear.upX.value = 0;
+                ear.upY.value = 1;
+                ear.upZ.value = 0;
+            } else if (ear.setPosition) {
+                ear.setPosition(0, 1.6, 10);
+                ear.setOrientation(0, -0.15, -1, 0, 1, 0);
+            }
         }
         if (ctx.state === "suspended") ctx.resume();
         return ctx;
@@ -86,6 +101,24 @@ const Sfx = (() => {
         return src;
     }
 
+    function panner(x, y, z) {
+        const p = ctx.createPanner();
+        p.panningModel = "HRTF";
+        p.distanceModel = "inverse";
+        p.refDistance = 4;
+        p.maxDistance = 90;
+        p.rolloffFactor = 1;
+        if (p.positionX) {
+            p.positionX.value = x;
+            p.positionY.value = y;
+            p.positionZ.value = z;
+        } else {
+            p.setPosition(x, y, z);
+        }
+        p.connect(master);
+        return p;
+    }
+
     function envGain(start, peak, attack, dur) {
         const g = ctx.createGain();
         g.gain.setValueAtTime(0.0001, start);
@@ -94,13 +127,14 @@ const Sfx = (() => {
         return g;
     }
 
-    function osc(type, freq, start, dur, peak, slide) {
+    function osc(type, freq, start, dur, peak, slide, x, z) {
         const o = ctx.createOscillator();
         o.type = type;
         o.frequency.setValueAtTime(freq, start);
         if (slide) o.frequency.exponentialRampToValueAtTime(slide, start + dur);
         const g = envGain(start, peak, 0.012, dur);
-        o.connect(g).connect(master);
+        const dest = typeof x === "number" ? panner(x, 1.3, typeof z === "number" ? z : -4) : master;
+        o.connect(g).connect(dest);
         o.start(start);
         o.stop(start + dur + 0.02);
     }
@@ -144,26 +178,32 @@ const Sfx = (() => {
         bp.frequency.value = 2800;
         bp.Q.value = 12;
         const g = envGain(t, 0.45, 0.005, 0.2);
-        src.connect(bp).connect(g).connect(master);
+        src.connect(bp).connect(g).connect(panner(0, 1.7, -2));
         src.start(t);
-        osc("sine", 2100, t, 0.16, 0.22, 2400);
+        osc("sine", 2100, t, 0.16, 0.22, 2400, 0, -2);
     }
 
-    function crowd(start, dur, intensity) {
+    function crowd(start, dur, intensity, x, z) {
+        if (typeof x !== "number") {
+            crowd(start, dur, intensity * 0.72, -16, -2);
+            crowd(start, dur, intensity * 0.72, 16, -2);
+            return;
+        }
         const src = noise(dur);
         const f = ctx.createBiquadFilter();
         f.type = "lowpass";
         f.frequency.value = 900;
         const g = envGain(start, intensity, 0.08, dur);
-        src.connect(f).connect(g).connect(master);
+        src.connect(f).connect(g).connect(panner(x, 4, z));
         src.start(start);
     }
 
-    function kick(start) {
-        osc("sine", 140, start, 0.18, 0.28, 45);
+    function kick(start, x) {
+        const side = typeof x === "number" ? x : (Math.random() < 0.5 ? -7 : 7);
+        osc("sine", 140, start, 0.18, 0.28, 45, side, -9);
         const src = noise(0.08);
         const g = envGain(start, 0.18, 0.002, 0.08);
-        src.connect(g).connect(master);
+        src.connect(g).connect(panner(side, 0.3, -9));
         src.start(start);
     }
 
@@ -171,12 +211,12 @@ const Sfx = (() => {
         if (!ensure()) return;
         const t = ctx.currentTime;
         whistle();
-        kick(t + 0.12);
+        kick(t + 0.12, 9);
         crowd(t, 1.6, 0.28);
-        osc("sawtooth", 262, t + 0.18, 0.35, 0.16);
-        osc("sawtooth", 330, t + 0.28, 0.4, 0.16);
-        osc("sawtooth", 392, t + 0.4, 0.55, 0.2);
-        osc("triangle", 523, t + 0.4, 0.6, 0.1);
+        osc("sawtooth", 262, t + 0.18, 0.35, 0.16, null, 4, -10);
+        osc("sawtooth", 330, t + 0.28, 0.4, 0.16, null, 7, -11);
+        osc("sawtooth", 392, t + 0.4, 0.55, 0.2, null, 9, -12);
+        osc("triangle", 523, t + 0.4, 0.6, 0.1, null, 9, -12);
     }
 
     function miss() {
@@ -226,7 +266,7 @@ const Sfx = (() => {
         const t = ctx.currentTime;
         crowd(t, 1.4, 0.12);
         [0, 1, 2, 3, 4, 5, 6, 7].forEach(function (i) {
-            osc("triangle", 220 + i * 70, t + i * 0.14, 0.12, 0.07 + i * 0.01);
+            osc("triangle", 220 + i * 70, t + i * 0.14, 0.12, 0.07 + i * 0.01, null, -9 + i * 2.6, -3);
         });
         osc("sine", 880, t + 1.2, 0.22, 0.1);
         osc("sine", 1320, t + 1.28, 0.28, 0.08);
