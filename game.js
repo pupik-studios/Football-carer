@@ -2672,7 +2672,7 @@ const EXCLUSIVES = [
     { id: "x-vandijk", name: "Ван Дейк", en: "Van Dijk", pos: "CB", ovr: 88, flag: "🇳🇱", club: "Liverpool", exclusive: true },
     { id: "x-r9", name: "Роналдо Феномен", en: "Ronaldo Fenomeno", pos: "ST", ovr: 96, flag: "🇧🇷", club: "Бразилия", exclusive: true },
     { id: "x-dembele", name: "Дембеле", en: "Dembélé", pos: "RW", ovr: 93, flag: "🇫🇷", club: "PSG", exclusive: true },
-    { id: "x-olise", name: "Элиссе", en: "Olise", pos: "RW", ovr: 90, flag: "🇫🇷", club: "Bayern", exclusive: true }
+    { id: "x-olise", name: "Майкл Олисе", en: "Michael Olise", pos: "RW", ovr: 90, flag: "🇫🇷", club: "Bayern", exclusive: true }
 ];
 const DAY_MS = 24 * 60 * 60 * 1000;
 const DRAFTS = [
