@@ -39,7 +39,7 @@
       #studioSplash .studio-tap{margin:28px 0 0;letter-spacing:.34em;text-transform:uppercase;font-size:11px;font-weight:800;color:#d4af37}
       #studioSplash .studio-line{width:min(220px,46vw);height:1px;margin:10px 0 6px;background:linear-gradient(90deg,transparent,#d4af37,transparent)}
     </style>
-    <link rel="stylesheet" href="style.css?v=170">
+    <link rel="stylesheet" href="style.css?v=175">
 </head>
 <body>
 
@@ -449,6 +449,9 @@
             <div class="stat"><span></span><div class="stat-track"><i></i></div><b></b></div>
             <div class="stat"><span></span><div class="stat-track"><i></i></div><b></b></div>
             <div class="stat"><span></span><div class="stat-track"><i></i></div><b></b></div>
+            <div class="stat"><span></span><div class="stat-track"><i></i></div><b></b></div>
+            <div class="stat"><span></span><div class="stat-track"><i></i></div><b></b></div>
+            <div class="stat"><span></span><div class="stat-track"><i></i></div><b></b></div>
         </div>
     </div>
     </div>
@@ -465,6 +468,9 @@
             <button type="button" data-train="dribbling">🕺 Дриблинг +2</button>
             <button type="button" data-train="defending">🛡️ Защита +2</button>
             <button type="button" data-train="physical">💪 Физика +2</button>
+            <button type="button" data-train="stamina">Выносливость</button>
+            <button type="button" data-train="vision">Видение</button>
+            <button type="button" data-train="setpieces">Стандарты</button>
         </div>
         <button type="button" id="restBtn" class="rest">Восстановиться +50</button>
         <button type="button" id="restFastBtn" class="gold">100% за $100 · 1 сек</button>
@@ -573,6 +579,8 @@
         <p class="hint" id="stadKCrew"></p>
         <button type="button" id="stadKLines" class="gold">Купить разметку</button>
         <button type="button" id="stadKStaff" class="gold">Нанять персонал</button>
+        <div id="stadKProps"></div>
+        <div id="stadKUps"></div>
         <p class="hint" id="stadKGear"></p>
         <button type="button" id="stadKGearBtn" class="gold" hidden>Ворота и мячи</button>
         <button type="button" id="stadKUp" class="gold">Расширить</button>
@@ -601,6 +609,7 @@
             <button type="button" data-tier="rpl" data-i18n="rpl">РПЛ</button>
             <button type="button" data-tier="eu" data-i18n="europe">Европа</button>
             <button type="button" data-tier="leg" data-i18n="legends">Легенды</button>
+            <button type="button" data-tier="rook" data-i18n="marketRook">Новички</button>
             <button type="button" data-tier="drafts" data-i18n="marketDrafts">Драфты</button>
         </div>
         <div class="pos-tabs" id="marketPos">
@@ -644,6 +653,8 @@
         <p class="hint" id="stadCrew"></p>
         <button type="button" id="stadLines" class="gold">Купить разметку</button>
         <button type="button" id="stadStaff" class="gold">Нанять персонал</button>
+        <div id="stadProps"></div>
+        <div id="stadUps"></div>
         <p class="hint" id="stadGear"></p>
         <button type="button" id="stadGearBtn" class="gold" hidden>Ворота и мячи</button>
         <button type="button" id="stadUp" class="gold">Расширить</button>
@@ -801,7 +812,7 @@
 </div>
 
 <script src="audio.js?v=171" defer></script>
-<script src="loc.js?v=170" defer></script>
-<script src="game.js?v=170" defer></script>
+<script src="loc.js?v=175" defer></script>
+<script src="game.js?v=175" defer></script>
 </body>
 </html>

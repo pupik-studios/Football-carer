@@ -620,6 +620,29 @@ h2 {
     background: linear-gradient(160deg, #5a2890, #1a1028);
 }
 
+.live-upd.tone-ballon {
+    border-color: #ffd83d;
+    background: linear-gradient(180deg, #6a4a10 0%, #1a1206 72%);
+    box-shadow: 0 0 32px rgba(255, 200, 60, 0.45);
+}
+
+.live-upd.tone-ballon > b,
+.live-upd.tone-ballon em,
+.live-upd.tone-ballon .live-only {
+    color: #fff1c2;
+}
+
+.live-card.tone-ballon {
+    border-color: #ffd83d;
+    background: linear-gradient(160deg, #c9922a, #3a2808);
+}
+
+.live-card.tone-ballon b,
+.live-card.tone-ballon span,
+.live-card.tone-ballon small {
+    color: #fff8e4;
+}
+
 .live-upd.tone-rainbow {
     border: 3px solid transparent;
     background:
@@ -1692,13 +1715,14 @@ body.in-auction .lang-bar {
 }
 
 .market-tabs {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    display: flex;
+    flex-wrap: wrap;
     gap: 6px;
     margin: 0 0 8px;
 }
 
 .market-tabs button {
+    flex: 1 1 30%;
     width: auto;
     margin: 0;
     padding: 6px 4px;

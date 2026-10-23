@@ -74,9 +74,9 @@ const BALLON_RIVALS = [
     { n: "Wirtz", flag: "🇩🇪", s: 59 }
 ];
 
-const OUTFIELD_KEYS = ["pace", "shooting", "passing", "dribbling", "defending", "physical"];
-const GK_KEYS = ["diving", "handling", "kicking", "reflexes", "speed", "positioning"];
-const CB_KEYS = ["marking", "tackling", "heading", "strength", "jumping", "passing"];
+const OUTFIELD_KEYS = ["pace", "shooting", "passing", "dribbling", "defending", "physical", "stamina", "vision", "setpieces"];
+const GK_KEYS = ["diving", "handling", "kicking", "reflexes", "speed", "positioning", "stamina", "command"];
+const CB_KEYS = ["marking", "tackling", "heading", "strength", "jumping", "passing", "stamina", "vision"];
 
 const STAT_NAMES = {
     pace: "Скорость",
@@ -95,7 +95,11 @@ const STAT_NAMES = {
     tackling: "Отбор",
     heading: "Голова",
     strength: "Сила",
-    jumping: "Прыжок"
+    jumping: "Прыжок",
+    stamina: "Выносливость",
+    vision: "Видение",
+    setpieces: "Стандарты",
+    command: "Команда"
 };
 
 const STAT_LABELS = {
@@ -115,33 +119,37 @@ const STAT_LABELS = {
     tackling: "🦵 Отбор",
     heading: "🦅 Голова",
     strength: "💪 Сила",
-    jumping: "🦘 Прыжок"
+    jumping: "🦘 Прыжок",
+    stamina: "🫁 Выносливость",
+    vision: "👁️ Видение",
+    setpieces: "🎯 Стандарты",
+    command: "🗣️ Команда"
 };
 
 const START_STATS = {
-    ST:  { pace: 64, shooting: 68, passing: 52, dribbling: 60, defending: 32, physical: 58 },
-    LW:  { pace: 70, shooting: 58, passing: 56, dribbling: 68, defending: 34, physical: 50 },
-    RW:  { pace: 70, shooting: 58, passing: 56, dribbling: 68, defending: 34, physical: 50 },
-    CAM: { pace: 58, shooting: 62, passing: 68, dribbling: 66, defending: 38, physical: 52 },
-    CM:  { pace: 56, shooting: 52, passing: 68, dribbling: 58, defending: 54, physical: 60 },
-    CDM: { pace: 52, shooting: 42, passing: 62, dribbling: 50, defending: 68, physical: 66 },
-    CB:  { marking: 70, tackling: 68, heading: 72, strength: 74, jumping: 70, passing: 52 },
-    LB:  { pace: 68, shooting: 40, passing: 60, dribbling: 58, defending: 62, physical: 58 },
-    RB:  { pace: 68, shooting: 40, passing: 60, dribbling: 58, defending: 62, physical: 58 },
-    GK:  { diving: 68, handling: 66, kicking: 58, reflexes: 70, speed: 44, positioning: 67 }
+    ST:  { pace: 64, shooting: 68, passing: 52, dribbling: 60, defending: 32, physical: 58, stamina: 60, vision: 54, setpieces: 58 },
+    LW:  { pace: 70, shooting: 58, passing: 56, dribbling: 68, defending: 34, physical: 50, stamina: 62, vision: 56, setpieces: 54 },
+    RW:  { pace: 70, shooting: 58, passing: 56, dribbling: 68, defending: 34, physical: 50, stamina: 62, vision: 56, setpieces: 54 },
+    CAM: { pace: 58, shooting: 62, passing: 68, dribbling: 66, defending: 38, physical: 52, stamina: 58, vision: 68, setpieces: 64 },
+    CM:  { pace: 56, shooting: 52, passing: 68, dribbling: 58, defending: 54, physical: 60, stamina: 64, vision: 66, setpieces: 60 },
+    CDM: { pace: 52, shooting: 42, passing: 62, dribbling: 50, defending: 68, physical: 66, stamina: 66, vision: 60, setpieces: 52 },
+    CB:  { marking: 70, tackling: 68, heading: 72, strength: 74, jumping: 70, passing: 52, stamina: 66, vision: 50 },
+    LB:  { pace: 68, shooting: 40, passing: 60, dribbling: 58, defending: 62, physical: 58, stamina: 64, vision: 56, setpieces: 50 },
+    RB:  { pace: 68, shooting: 40, passing: 60, dribbling: 58, defending: 62, physical: 58, stamina: 64, vision: 56, setpieces: 50 },
+    GK:  { diving: 68, handling: 66, kicking: 58, reflexes: 70, speed: 44, positioning: 67, stamina: 58, command: 62 }
 };
 
 const OVR_WEIGHTS = {
-    ST:  { pace: 1.2, shooting: 1.7, passing: 0.7, dribbling: 1.1, defending: 0.35, physical: 1.0 },
-    LW:  { pace: 1.5, shooting: 1.1, passing: 1.0, dribbling: 1.5, defending: 0.4, physical: 0.7 },
-    RW:  { pace: 1.5, shooting: 1.1, passing: 1.0, dribbling: 1.5, defending: 0.4, physical: 0.7 },
-    CAM: { pace: 0.9, shooting: 1.2, passing: 1.6, dribbling: 1.3, defending: 0.5, physical: 0.7 },
-    CM:  { pace: 0.8, shooting: 0.8, passing: 1.6, dribbling: 1.0, defending: 1.0, physical: 1.1 },
-    CDM: { pace: 0.7, shooting: 0.5, passing: 1.2, dribbling: 0.7, defending: 1.6, physical: 1.3 },
-    CB:  { marking: 1.6, tackling: 1.55, heading: 1.35, strength: 1.4, jumping: 1.1, passing: 0.75 },
-    LB:  { pace: 1.3, shooting: 0.5, passing: 1.1, dribbling: 1.0, defending: 1.2, physical: 1.0 },
-    RB:  { pace: 1.3, shooting: 0.5, passing: 1.1, dribbling: 1.0, defending: 1.2, physical: 1.0 },
-    GK:  { diving: 1.5, handling: 1.4, kicking: 0.85, reflexes: 1.65, speed: 0.55, positioning: 1.5 }
+    ST:  { pace: 1.2, shooting: 1.7, passing: 0.7, dribbling: 1.1, defending: 0.35, physical: 1.0, stamina: 0.7, vision: 0.45, setpieces: 0.4 },
+    LW:  { pace: 1.5, shooting: 1.1, passing: 1.0, dribbling: 1.5, defending: 0.4, physical: 0.7, stamina: 0.65, vision: 0.5, setpieces: 0.35 },
+    RW:  { pace: 1.5, shooting: 1.1, passing: 1.0, dribbling: 1.5, defending: 0.4, physical: 0.7, stamina: 0.65, vision: 0.5, setpieces: 0.35 },
+    CAM: { pace: 0.9, shooting: 1.2, passing: 1.6, dribbling: 1.3, defending: 0.5, physical: 0.7, stamina: 0.55, vision: 0.7, setpieces: 0.55 },
+    CM:  { pace: 0.8, shooting: 0.8, passing: 1.6, dribbling: 1.0, defending: 1.0, physical: 1.1, stamina: 0.7, vision: 0.65, setpieces: 0.45 },
+    CDM: { pace: 0.7, shooting: 0.5, passing: 1.2, dribbling: 0.7, defending: 1.6, physical: 1.3, stamina: 0.75, vision: 0.5, setpieces: 0.3 },
+    CB:  { marking: 1.6, tackling: 1.55, heading: 1.35, strength: 1.4, jumping: 1.1, passing: 0.75, stamina: 0.6, vision: 0.35 },
+    LB:  { pace: 1.3, shooting: 0.5, passing: 1.1, dribbling: 1.0, defending: 1.2, physical: 1.0, stamina: 0.7, vision: 0.45, setpieces: 0.3 },
+    RB:  { pace: 1.3, shooting: 0.5, passing: 1.1, dribbling: 1.0, defending: 1.2, physical: 1.0, stamina: 0.7, vision: 0.45, setpieces: 0.3 },
+    GK:  { diving: 1.5, handling: 1.4, kicking: 0.85, reflexes: 1.65, speed: 0.55, positioning: 1.5, stamina: 0.45, command: 0.5 }
 };
 
 const ROLE = {
@@ -934,7 +942,28 @@ const TRANSFER_STARS = [
     { id: "juanito", name: "Хуанито", en: "Juanito", pos: "RW", ovr: 88, club: "Real Madrid", flag: "🇪🇸", tier: "leg", ended: true, dead: true },
     { id: "cr7", name: "Криштиану Роналду", en: "Cristiano Ronaldo", pos: "ST", ovr: 99, club: "Al-Nassr", flag: "🇵🇹", tier: "eu", active: true },
     { id: "felix", name: "Жоау Феликс", en: "João Félix", pos: "CAM", ovr: 85, club: "Al-Nassr", flag: "🇵🇹", tier: "eu", active: true },
-    { id: "messi", name: "Лионель Месси", en: "Lionel Messi", pos: "RW", ovr: 98, club: "Inter Miami", flag: "🇦🇷", tier: "eu", active: true }
+    { id: "messi", name: "Лионель Месси", en: "Lionel Messi", pos: "RW", ovr: 98, club: "Inter Miami", flag: "🇦🇷", tier: "eu", active: true },
+    { id: "u19-khusanov", name: "Хусанов", en: "Khusanov", pos: "CB", ovr: 74, club: "Узбекистан U19", flag: "🇺🇿", tier: "rook", youth: "u19" },
+    { id: "u19-alijonov", name: "Алижонов", en: "Alijonov", pos: "LB", ovr: 68, club: "Узбекистан U19", flag: "🇺🇿", tier: "rook", youth: "u19" },
+    { id: "u19-urunov", name: "Урунов", en: "Urunov", pos: "CAM", ovr: 70, club: "Узбекистан U19", flag: "🇺🇿", tier: "rook", youth: "u19" },
+    { id: "u19-nasrullaev", name: "Насруллаев", en: "Nasrullaev", pos: "RW", ovr: 67, club: "Узбекистан U19", flag: "🇺🇿", tier: "rook", youth: "u19" },
+    { id: "u19-shukurov", name: "Шукуров", en: "Shukurov", pos: "CDM", ovr: 66, club: "Узбекистан U19", flag: "🇺🇿", tier: "rook", youth: "u19" },
+    { id: "u17-yuldoshev", name: "Юлдашев", en: "Yuldoshev", pos: "ST", ovr: 60, club: "Узбекистан U17", flag: "🇺🇿", tier: "rook", youth: "u17" },
+    { id: "u17-rakhimov", name: "Рахимов", en: "Rakhimov", pos: "GK", ovr: 57, club: "Узбекистан U17", flag: "🇺🇿", tier: "rook", youth: "u17" },
+    { id: "u17-alimov", name: "Алимов", en: "Alimov", pos: "CB", ovr: 59, club: "Узбекистан U17", flag: "🇺🇿", tier: "rook", youth: "u17" },
+    { id: "u17-toshev", name: "Тошев", en: "Toshev", pos: "LW", ovr: 61, club: "Узбекистан U17", flag: "🇺🇿", tier: "rook", youth: "u17" },
+    { id: "u17-juraev", name: "Жураев", en: "Juraev", pos: "CM", ovr: 58, club: "Узбекистан U17", flag: "🇺🇿", tier: "rook", youth: "u17" },
+    { id: "u19-cubarsi", name: "Кубарси", en: "Cubarsí", pos: "CB", ovr: 74, club: "Испания U19", flag: "🇪🇸", tier: "rook", youth: "u19" },
+    { id: "u19-turrientes", name: "Турриентес", en: "Turrientes", pos: "CM", ovr: 70, club: "Испания U19", flag: "🇪🇸", tier: "rook", youth: "u19" },
+    { id: "u19-barrios", name: "Барриос", en: "Barrios", pos: "CM", ovr: 71, club: "Испания U19", flag: "🇪🇸", tier: "rook", youth: "u19" },
+    { id: "u19-gasiorowski", name: "Гасиоровски", en: "Gąsiorowski", pos: "CB", ovr: 69, club: "Испания U19", flag: "🇪🇸", tier: "rook", youth: "u19" },
+    { id: "u19-fort", name: "Форт", en: "Fort", pos: "LW", ovr: 68, club: "Испания U19", flag: "🇪🇸", tier: "rook", youth: "u19" },
+    { id: "u19-guiu", name: "Гиу", en: "Guiu", pos: "ST", ovr: 67, club: "Испания U19", flag: "🇪🇸", tier: "rook", youth: "u19" },
+    { id: "u17-dro", name: "Дро Фернандес", en: "Dro Fernández", pos: "RW", ovr: 63, club: "Испания U17", flag: "🇪🇸", tier: "rook", youth: "u17" },
+    { id: "u17-cuenca", name: "Андрес Куэнка", en: "Andrés Cuenca", pos: "LB", ovr: 61, club: "Испания U17", flag: "🇪🇸", tier: "rook", youth: "u17" },
+    { id: "u17-guille", name: "Гилье Фернандес", en: "Guille Fernández", pos: "CM", ovr: 60, club: "Испания U17", flag: "🇪🇸", tier: "rook", youth: "u17" },
+    { id: "u17-junyent", name: "Ким Жуньент", en: "Quim Junyent", pos: "CB", ovr: 59, club: "Испания U17", flag: "🇪🇸", tier: "rook", youth: "u17" },
+    { id: "u17-prim", name: "Пау Прим", en: "Pau Prim", pos: "CDM", ovr: 58, club: "Испания U17", flag: "🇪🇸", tier: "rook", youth: "u17" }
 ];
 
 const SEASON_XI = {
@@ -1095,7 +1124,10 @@ function newClub(name, city, nation, avatar) {
             passing: 55,
             dribbling: 54,
             defending: 55,
-            physical: 56
+            physical: 56,
+            stamina: 56,
+            vision: 54,
+            setpieces: 52
         }
     };
 }
@@ -1313,7 +1345,8 @@ function statWord(key) {
         defending: "Defending", physical: "Physical", diving: "Diving", handling: "Handling",
         kicking: "Kicking", reflexes: "Reflexes", speed: "Speed", positioning: "Positioning",
         marking: "Marking", tackling: "Tackling", heading: "Heading", strength: "Strength",
-        jumping: "Jumping"
+        jumping: "Jumping", stamina: "Stamina", vision: "Vision", setpieces: "Set pieces",
+        command: "Command"
     };
     return en[key] || STAT_NAMES[key] || key;
 }
@@ -2635,16 +2668,20 @@ const EXCLUSIVES = [
     { id: "x-pedri", name: "Педри", en: "Pedri", pos: "CM", ovr: 87, flag: "🇪🇸", club: "Barcelona", exclusive: true },
     { id: "x-raphinha", name: "Рафинья", en: "Raphinha", pos: "RW", ovr: 86, flag: "🇧🇷", club: "Barcelona", exclusive: true },
     { id: "x-salah", name: "Салах", en: "Salah", pos: "RW", ovr: 93, flag: "🇪🇬", club: "Liverpool", exclusive: true },
-    { id: "x-haaland", name: "Холанд", en: "Haaland", pos: "ST", ovr: 91, flag: "🇳🇴", club: "City", exclusive: true },
-    { id: "x-vandijk", name: "Ван Дейк", en: "Van Dijk", pos: "CB", ovr: 88, flag: "🇳🇱", club: "Liverpool", exclusive: true }
+    { id: "x-haaland", name: "Холанд", en: "Haaland", pos: "ST", ovr: 94, flag: "🇳🇴", club: "City", exclusive: true },
+    { id: "x-vandijk", name: "Ван Дейк", en: "Van Dijk", pos: "CB", ovr: 88, flag: "🇳🇱", club: "Liverpool", exclusive: true },
+    { id: "x-r9", name: "Роналдо Феномен", en: "Ronaldo Fenomeno", pos: "ST", ovr: 96, flag: "🇧🇷", club: "Бразилия", exclusive: true },
+    { id: "x-dembele", name: "Дембеле", en: "Dembélé", pos: "RW", ovr: 93, flag: "🇫🇷", club: "PSG", exclusive: true },
+    { id: "x-olise", name: "Элиссе", en: "Olise", pos: "RW", ovr: 90, flag: "🇫🇷", club: "Bayern", exclusive: true }
 ];
+const DAY_MS = 24 * 60 * 60 * 1000;
 const DRAFTS = [
     { id: "duo", title: "dropLinkT", text: "dropLink", reward: ["x-messi", "x-modric"], tone: "dusk" },
-    { id: "ucl", title: "dropUclT", text: "dropUcl", reward: ["x-cr7", "x-bellingham", "x-diomande"], tone: "rainbow" },
+    { id: "ucl", title: "dropUclT", text: "dropUcl", reward: ["x-cr7", "x-bellingham", "x-diomande"], tone: "rainbow", ms: 4 * DAY_MS },
+    { id: "ballon", title: "dropBallonT", text: "dropBallon", only: "liveOnlyBallon", reward: ["x-r9", "x-cr7", "x-haaland", "x-dembele", "x-mbappe", "x-olise"], tone: "ballon", ms: 14 * DAY_MS },
     { id: "serie", title: "dropSerieT", text: "dropSerie", reward: ["x-lautaro", "x-barella"], tone: "serie" },
     { id: "liga", title: "dropLigaT", text: "dropLiga", reward: ["x-yamal", "x-pedri", "x-raphinha"], tone: "liga" }
 ];
-const DROP_SOON = { id: "soon", title: "dropSoonT", text: "dropSoon", reward: [], tone: "dusk", soon: true };
 const DRAFT_XI = ["GK", "LB", "CB", "CB", "RB", "CM", "CAM", "CM", "LW", "ST", "RW"];
 const DRAFT_LINE_IX = [[8, 9, 10], [5, 6, 7], [1, 2, 3, 4], [0]];
 const DROP_MS = 5 * 24 * 60 * 60 * 1000;
@@ -2681,23 +2718,29 @@ function dropLength(drop) {
     return (drop && drop.ms) || DROP_MS;
 }
 
+function dropCycle() {
+    return DRAFTS.reduce(function (sum, drop) { return sum + dropLength(drop); }, 0) || DROP_MS;
+}
+
 function dropNow() {
     const gone = Math.max(0, gameNow() - DROP_START);
-    let rest = gone;
+    const cycle = dropCycle();
+    const loop = Math.floor(gone / cycle);
+    let rest = gone % cycle;
     for (let i = 0; i < DRAFTS.length; i++) {
         const len = dropLength(DRAFTS[i]);
         if (rest < len) {
             const left = len - rest;
             return {
                 drop: DRAFTS[i],
-                n: i,
+                n: loop * DRAFTS.length + i,
                 days: Math.max(1, Math.ceil(left / 86400000)),
                 left: left
             };
         }
         rest -= len;
     }
-    return { drop: DROP_SOON, n: DRAFTS.length, days: 0, left: 0, soon: true };
+    return { drop: DRAFTS[0], n: loop * DRAFTS.length, days: 1, left: dropLength(DRAFTS[0]) };
 }
 
 const PITY_A = 25;
@@ -2730,10 +2773,6 @@ function syncDraftWindow() {
     const mark = now.drop.id + ":" + now.n;
     if (player.draftMark === mark) return;
     player.draftMark = mark;
-    if (now.drop.soon) {
-        save();
-        return;
-    }
     player.draftTokens += 1;
     addLog(t("logDraft", { name: t(now.drop.title) }));
     save();
@@ -2859,9 +2898,9 @@ let liveMark = "";
 function paintLive() {
     const bar = get("liveUpd");
     const club = !!(player && player.name && isClub());
+    const now = dropNow();
     if (bar) bar.hidden = !club;
     if (!club) return;
-    const now = dropNow();
     const title = get("liveTitle");
     const text = get("liveText");
     const left = get("liveLeft");
@@ -2869,14 +2908,14 @@ function paintLive() {
     if (kicker) kicker.textContent = t("liveKicker");
     if (title) title.textContent = t(now.drop.title);
     if (text) text.textContent = t(now.drop.text);
-    if (left) left.textContent = now.drop.soon ? "" : liveClock();
+    if (left) left.textContent = liveClock();
     const only = get("liveOnly");
-    if (only) only.textContent = now.drop.soon ? "" : (now.drop.tone === "rainbow" ? t("liveOnlyLong") : t("liveOnly"));
+    if (only) only.textContent = t(now.drop.only || (now.drop.tone === "rainbow" ? "liveOnlyLong" : "liveOnly"));
     const next = get("liveNext");
-    if (next) next.textContent = now.drop.soon ? "" : t("dropNext", { n: now.days, t: player && player.name ? player.draftTokens : 0 });
+    if (next) next.textContent = t("dropNext", { n: now.days, t: player && player.name ? player.draftTokens : 0 });
     const open = get("liveDraft");
-    if (open) open.hidden = !!now.drop.soon;
-    if (bar) bar.className = "live-upd tone-" + (now.drop.soon ? "dusk" : (now.drop.tone || "dusk"));
+    if (open) open.hidden = false;
+    if (bar) bar.className = "live-upd tone-" + (now.drop.tone || "dusk");
     paintExclusiveCards(get("liveCards"));
     const mark = now.drop.id + ":" + now.n;
     const flipped = liveMark && liveMark !== mark;
@@ -3165,11 +3204,6 @@ function keepStar(star) {
 function spinDraft() {
     ensureDraft();
     if (!isClub()) return;
-    if (dropNow().drop.soon) {
-        player.draftNote = t("dropSoon");
-        renderDraft();
-        return;
-    }
     if (player.draftOffer) return;
     if (player.draftTokens < 1) {
         player.draftNote = t("draftNeed", { n: dropNow().days });
@@ -3641,6 +3675,9 @@ function updateScheduleUI() {
         if (player.retired) {
             matchBtn.disabled = true;
             matchBtn.textContent = t("retiredBtn");
+        } else if (propsDue()) {
+            matchBtn.disabled = true;
+            matchBtn.textContent = t("propMiss");
         } else if (gearDue()) {
             matchBtn.disabled = true;
             matchBtn.textContent = t("gearBlock");
@@ -3654,7 +3691,7 @@ function updateScheduleUI() {
         }
     }
     if (dockMatch) {
-        dockMatch.disabled = player.retired || gearDue() || !(canPlay || canSkip);
+        dockMatch.disabled = player.retired || propsDue() || gearDue() || !(canPlay || canSkip);
         dockMatch.textContent = hurt && due
             ? "🤕 " + t("skipShort")
             : (due
@@ -3887,9 +3924,25 @@ function statTint(n) {
     return "#e57373";
 }
 
+function ensureExtraStats() {
+    if (!player || !player.stats) return;
+    const s = player.stats;
+    if (typeof s.stamina !== "number") s.stamina = s.physical || s.strength || s.speed || 58;
+    if (isGk()) {
+        if (typeof s.command !== "number") s.command = s.positioning || 62;
+        return;
+    }
+    if (typeof s.vision !== "number") s.vision = s.passing || 56;
+    if (!isCb() && typeof s.setpieces !== "number") {
+        s.setpieces = Math.round(((s.shooting || 55) + (s.passing || 55)) / 2);
+    }
+}
+
 function updateStats() {
+    ensureExtraStats();
     const keys = statKeys();
     const rows = document.querySelectorAll("#statList .stat");
+    rows.forEach(function (row, i) { row.hidden = i >= keys.length; });
     keys.forEach((key, i) => {
         const row = rows[i];
         if (!row) return;
@@ -4057,9 +4110,11 @@ function updateHeader() {
 }
 
 function updateTrainButtons() {
+    ensureExtraStats();
     const keys = statKeys();
     document.querySelectorAll("[data-train]").forEach((button, i) => {
         const key = keys[i];
+        button.hidden = !key;
         if (!key) return;
         button.setAttribute("data-train", key);
         const label = isClub() ? t("club_" + key) : t("lbl_" + key);
@@ -6090,6 +6145,10 @@ function paintGear() {
         btn.disabled = !due;
         btn.textContent = t("gearBuy", { pay: money(cost) });
     });
+    if (propsDue() && matchHint) {
+        matchHint.hidden = false;
+        matchHint.textContent = t("propMiss");
+    }
 }
 
 function buyGear() {
@@ -6123,9 +6182,56 @@ function ensureStadium() {
 function ensureYard() {
     if (!player) return;
     if (!player.yard) player.yard = { lines: false, staff: false };
+    if (!player.yard.props || typeof player.yard.props !== "object") player.yard.props = {};
+    if (!player.yard.ups || typeof player.yard.ups !== "object") player.yard.ups = {};
 }
 
 const YARD_COST = { lines: 100, staff: 160 };
+const YARD_PROPS = [
+    { id: "goals", cost: 180 },
+    { id: "balls", cost: 80 },
+    { id: "nets", cost: 60 },
+    { id: "flags", cost: 40 },
+    { id: "cones", cost: 50 }
+];
+const YARD_UPS = [
+    { id: "lights", cost: 240 },
+    { id: "gym", cost: 320 },
+    { id: "drain", cost: 180 },
+    { id: "med", cost: 260 }
+];
+
+function propsDue() {
+    if (!player || !player.name) return false;
+    ensureYard();
+    return YARD_PROPS.some(function (row) { return !player.yard.props[row.id]; });
+}
+
+function trainEnergy() {
+    ensureYard();
+    return player.yard.ups.drain ? 12 : TRAIN_COST;
+}
+
+function buyYardItem(group, id) {
+    const table = group === "props" ? YARD_PROPS : YARD_UPS;
+    const row = table.find(function (item) { return item.id === id; });
+    if (!player || !player.name || !row) return;
+    ensureYard();
+    if (player.yard[group][id]) return;
+    if ((player.respect || 0) < row.cost) {
+        Sfx.error();
+        addLog(t(group === "props" ? "propNeed" : "upNeed", { name: t("yard_" + id), pay: money(row.cost) }));
+        return;
+    }
+    player.respect -= row.cost;
+    player.yard[group][id] = true;
+    Sfx.ding();
+    addLog(t(group === "props" ? "propBuy" : "upBuy", { name: t("yard_" + id), pay: money(row.cost) }));
+    updateRespect();
+    paintStadium();
+    updateScheduleUI();
+    save();
+}
 
 function buyYard(kind) {
     if (!player || !player.name || !YARD_COST[kind]) return;
@@ -6161,8 +6267,13 @@ function paintStadium() {
         bowl.setAttribute("data-mark", player.yard.lines ? "1" : "0");
         const crew = get(prefix + "Crew");
         if (crew) {
-            crew.textContent = t(player.yard.lines ? "linesOn" : "linesOff") + " · " + t(player.yard.staff ? "staffOn" : "staffOff");
+            const got = YARD_PROPS.filter(function (row) { return player.yard.props[row.id]; }).length;
+            const ownedUps = YARD_UPS.filter(function (row) { return player.yard.ups[row.id]; }).map(function (row) { return t("yard_" + row.id); });
+            crew.textContent = t(player.yard.lines ? "linesOn" : "linesOff") + " · " + t(player.yard.staff ? "staffOn" : "staffOff")
+                + " · " + t("propLine", { have: got, n: YARD_PROPS.length })
+                + (ownedUps.length ? " · " + ownedUps.join(", ") : "");
         }
+        paintYardShop(prefix);
         const linesBtn = get(prefix + "Lines");
         if (linesBtn) {
             linesBtn.hidden = !!player.yard.lines;
@@ -6199,6 +6310,34 @@ function paintStadium() {
     });
 }
 
+function paintYardShop(prefix) {
+    const props = get(prefix + "Props");
+    const ups = get(prefix + "Ups");
+    if (props) {
+        props.innerHTML = "";
+        YARD_PROPS.forEach(function (row) {
+            if (player.yard.props[row.id]) return;
+            const btn = document.createElement("button");
+            btn.type = "button";
+            btn.className = "gold";
+            btn.setAttribute("data-prop", row.id);
+            btn.textContent = t("yardBtn", { name: t("yard_" + row.id), pay: money(row.cost) });
+            props.appendChild(btn);
+        });
+    }
+    if (ups) {
+        ups.innerHTML = "";
+        YARD_UPS.forEach(function (row) {
+            if (player.yard.ups[row.id]) return;
+            const btn = document.createElement("button");
+            btn.type = "button";
+            btn.setAttribute("data-up", row.id);
+            btn.textContent = t("yardBtn", { name: t("yard_" + row.id), pay: money(row.cost) });
+            ups.appendChild(btn);
+        });
+    }
+}
+
 function upgradeStadium() {
     if (!player || !player.name) return;
     ensureStadium();
@@ -6227,6 +6366,7 @@ function takeStadiumGate(result) {
     ensureYard();
     let pay = Math.max(1, Math.round(row.gate * mul));
     if (!player.yard.staff) pay = Math.max(1, Math.round(pay * 0.5));
+    if (player.yard.ups && player.yard.ups.lights) pay = Math.max(1, Math.round(pay * 1.2));
     player.stadium.crowd = crowd;
     player.stadium.pay = pay;
     player.respect = (player.respect || 0) + pay;
@@ -6654,6 +6794,7 @@ function trainNeed(stat) {
     else if (cur >= 80) need = 2;
     if (player && player.age >= 30) need += 1;
     if (isInjured()) need += 1;
+    if (player && player.yard && player.yard.ups && player.yard.ups.gym) need = Math.max(1, need - 1);
     return need;
 }
 
@@ -6731,13 +6872,14 @@ function train(stat) {
         addLog(t("logRestLock", { n: restRemain() }));
         return;
     }
-    if (!needEnergy(TRAIN_COST)) return;
+    const drill = trainEnergy();
+    if (!needEnergy(drill)) return;
     if (player.stats[stat] >= 99) {
         Sfx.error();
         addLog(t("logStatMax", { stat: statWord(stat) }));
         return;
     }
-    player.energy -= TRAIN_COST;
+    player.energy -= drill;
     const need = trainNeed(stat);
     const gain = applyTrain(stat);
     advanceWeek();
@@ -6762,7 +6904,8 @@ function rest() {
         addLog(t("logRestWaitTrain", { n: restRemain() }));
         return;
     }
-    player.energy = Math.min(ENERGY_MAX, player.energy + REST_GAIN);
+    const restGain = REST_GAIN + (player.yard && player.yard.ups && player.yard.ups.med ? 20 : 0);
+    player.energy = Math.min(ENERGY_MAX, player.energy + restGain);
     player.restUntil = Date.now() + REST_LOCK_MS;
     Sfx.rest();
     addLog(t("logRest", { n: player.energy }));
@@ -7570,6 +7713,13 @@ function playMatch(useBribe) {
         }
         return;
     }
+    if (propsDue()) {
+        Sfx.error();
+        addLog(t("propMiss"));
+        paintStadium();
+        updateScheduleUI();
+        return;
+    }
     if (gearDue()) {
         Sfx.error();
         addLog(t("gearRust", { pay: money(gearCost()) }));
@@ -8054,7 +8204,8 @@ function updateClubs() {
     });
 }
 
-function starCost(ovr) {
+function starCost(ovr, star) {
+    if (star && star.tier === "rook") return star.youth === "u17" ? 16 : 32;
     if (ovr >= 90) return 160 + (ovr - 90) * 24;
     if (ovr >= 82) return 72 + (ovr - 82) * 10;
     return 36 + Math.max(0, ovr - 74) * 5;
@@ -8077,12 +8228,12 @@ function signStar(star) {
         addLog(t("logSquadFull"));
         return;
     }
-    if ((player.respect || 0) < starCost(star.ovr)) {
+    if ((player.respect || 0) < starCost(star.ovr, star)) {
         Sfx.error();
-        addLog(t("logNeedStar", { pay: money(starCost(star.ovr)), name: shown(star) }));
+        addLog(t("logNeedStar", { pay: money(starCost(star.ovr, star)), name: shown(star) }));
         return;
     }
-    player.respect -= starCost(star.ovr);
+    player.respect -= starCost(star.ovr, star);
     player.squad.push(star.id);
     const gain = Math.max(1, Math.round((star.ovr - 74) / 5));
     starBoostKeys(star.pos).forEach((key) => {
@@ -8091,11 +8242,11 @@ function signStar(star) {
         }
     });
     Sfx.transferBig(star.ovr);
-    addLog(t("logBought", { flag: star.flag, name: shown(star), pos: star.pos, ovr: star.ovr, pay: money(starCost(star.ovr)) }));
+    addLog(t("logBought", { flag: star.flag, name: shown(star), pos: star.pos, ovr: star.ovr, pay: money(starCost(star.ovr, star)) }));
     if (lineupOf(squadStars()).bench.some(function (row) { return row.id === star.id; })) {
         addLog(t("logBench", { name: shown(star), ovr: star.ovr }));
     }
-    showAura("transfer", "−" + money(starCost(star.ovr)), shown(star), ui(star.club) + " · " + star.pos + " " + star.ovr, "#ffd83d", 1800);
+    showAura("transfer", "−" + money(starCost(star.ovr, star)), shown(star), ui(star.club) + " · " + star.pos + " " + star.ovr, "#ffd83d", 1800);
     renderAll();
     save();
 }
@@ -8110,7 +8261,7 @@ function releaseStar(star) {
         player.draftBag = player.draftBag.filter(function (item) { return item.id !== star.id; });
     }
     if (player.draftLast && player.draftLast.id === star.id) player.draftLast = null;
-    const refund = Math.round(starCost(star.ovr) * 0.4);
+    const refund = Math.round(starCost(star.ovr, star) * 0.4);
     player.respect = (player.respect || 0) + refund;
     const gain = Math.max(1, Math.round((star.ovr - 74) / 5));
     starBoostKeys(star.pos).forEach((key) => {
@@ -8396,6 +8547,51 @@ function buyVouchers(n, cost) {
     Sfx.ding();
 }
 
+const ACADEMY_COST = { u17: 220, u19: 480 };
+
+function ensureAcademy() {
+    if (!player) return;
+    if (!player.academy || typeof player.academy !== "object") player.academy = { u17: false, u19: false };
+}
+
+function openAcademy(which) {
+    if (!player || !isClub() || !ACADEMY_COST[which]) return;
+    ensureAcademy();
+    if (player.academy[which]) return;
+    const cost = ACADEMY_COST[which];
+    const name = which.toUpperCase();
+    if ((player.respect || 0) < cost) {
+        Sfx.error();
+        addLog(t("academyNeed", { name: name, pay: money(cost) }));
+        return;
+    }
+    player.respect -= cost;
+    player.academy[which] = true;
+    Sfx.ding();
+    addLog(t("academyOpen", { name: name, pay: money(cost) }));
+    updateRespect();
+    updateMarket();
+    save();
+}
+
+function paintAcademyChoice(box) {
+    ["u17", "u19"].forEach(function (which) {
+        if (player.academy[which]) {
+            const note = document.createElement("p");
+            note.className = "hint";
+            note.textContent = t("academyOn", { name: which.toUpperCase() });
+            box.appendChild(note);
+            return;
+        }
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "gold";
+        button.setAttribute("data-academy", which);
+        button.textContent = t("academyBuy", { name: which.toUpperCase(), pay: money(ACADEMY_COST[which]) });
+        box.appendChild(button);
+    });
+}
+
 function updateMarket() {
     const box = get("market");
     const hint = get("marketHint");
@@ -8441,19 +8637,28 @@ function updateMarket() {
         box.appendChild(open);
         return;
     }
+    ensureAcademy();
+    if (marketFilter === "rook") paintAcademyChoice(box);
     const list = TRANSFER_STARS.filter((star) => {
+        if (star.tier === "rook") {
+            const posOk = marketPos === "all" || star.pos === marketPos;
+            return marketFilter === "rook" && posOk && !!(player.academy && player.academy[star.youth]);
+        }
+        if (marketFilter === "rook") return false;
         const tierOk = marketFilter === "all" || star.tier === marketFilter || (marketFilter === "leg" && star.id === "cr7");
         const posOk = marketPos === "all" || star.pos === marketPos;
         return tierOk && posOk;
     }).sort(function (a, b) { return (b.ovr || 0) - (a.ovr || 0); });
     if (hint) {
-        hint.textContent = t("marketCount", { n: list.length, sq: player.squad.length, cash: money(player.respect) });
+        hint.textContent = marketFilter === "rook"
+            ? t("academyHint")
+            : t("marketCount", { n: list.length, sq: player.squad.length, cash: money(player.respect) });
     }
     document.querySelectorAll("#marketPos [data-pos]").forEach((btn) => {
         btn.classList.toggle("on", btn.getAttribute("data-pos") === marketPos);
     });
     list.forEach((star) => {
-        const cost = starCost(star.ovr);
+        const cost = starCost(star.ovr, star);
         const owned = player.squad.indexOf(star.id) >= 0;
         const row = document.createElement("div");
         row.className = "market-row" + (owned ? " owned" : (player.respect || 0) < cost ? " locked" : "");
@@ -9281,6 +9486,21 @@ function bind() {
         const btn = get(id);
         if (btn) btn.addEventListener("click", function () { Sfx.click(); buyYard("staff"); });
     });
+    ["stadProps", "stadKProps", "stadUps", "stadKUps"].forEach(function (id) {
+        const box = get(id);
+        if (!box) return;
+        box.addEventListener("click", function (event) {
+            const prop = event.target.closest("[data-prop]");
+            const up = event.target.closest("[data-up]");
+            if (prop) {
+                Sfx.click();
+                buyYardItem("props", prop.getAttribute("data-prop"));
+            } else if (up) {
+                Sfx.click();
+                buyYardItem("ups", up.getAttribute("data-up"));
+            }
+        });
+    });
     const shopModeBox = get("shopMode");
     if (shopModeBox) {
         shopModeBox.addEventListener("click", function (event) {
@@ -9390,6 +9610,12 @@ function bind() {
             if (voucher) {
                 Sfx.click();
                 buyVouchers(Number(voucher.getAttribute("data-voucher")), Number(voucher.getAttribute("data-cost")));
+                return;
+            }
+            const academyBtn = event.target.closest("[data-academy]");
+            if (academyBtn) {
+                Sfx.click();
+                openAcademy(academyBtn.getAttribute("data-academy"));
                 return;
             }
             const btn = event.target.closest("[data-star]");
