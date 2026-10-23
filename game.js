@@ -963,7 +963,8 @@ const TRANSFER_STARS = [
     { id: "u17-cuenca", name: "Андрес Куэнка", en: "Andrés Cuenca", pos: "LB", ovr: 61, club: "Испания U17", flag: "🇪🇸", tier: "rook", youth: "u17" },
     { id: "u17-guille", name: "Гилье Фернандес", en: "Guille Fernández", pos: "CM", ovr: 60, club: "Испания U17", flag: "🇪🇸", tier: "rook", youth: "u17" },
     { id: "u17-junyent", name: "Ким Жуньент", en: "Quim Junyent", pos: "CB", ovr: 59, club: "Испания U17", flag: "🇪🇸", tier: "rook", youth: "u17" },
-    { id: "u17-prim", name: "Пау Прим", en: "Pau Prim", pos: "CDM", ovr: 58, club: "Испания U17", flag: "🇪🇸", tier: "rook", youth: "u17" }
+    { id: "u17-prim", name: "Пау Прим", en: "Pau Prim", pos: "CDM", ovr: 58, club: "Испания U17", flag: "🇪🇸", tier: "rook", youth: "u17" },
+    { id: "u17-ronaldojr", name: "Роналду Джр", en: "Ronaldo Jr", pos: "LW", ovr: 65, club: "Португалия U17", flag: "🇵🇹", tier: "rook", youth: "u17" }
 ];
 
 const SEASON_XI = {
