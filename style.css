@@ -3217,6 +3217,56 @@ body.injured .hook span {
     letter-spacing: 0.18em;
 }
 
+.soc-push {
+    display: block;
+    width: 100%;
+    margin: 0 0 12px;
+    padding: 12px 14px;
+    text-align: left;
+    text-transform: none;
+    background: #1a2030;
+    border: 1px solid #3a4258;
+    border-radius: 14px;
+}
+
+.soc-push[hidden] {
+    display: none;
+}
+
+.soc-push b {
+    display: block;
+    margin-bottom: 4px;
+}
+
+.soc-push span {
+    display: block;
+    color: #c5cad6;
+    font-size: 14px;
+    line-height: 1.35;
+}
+
+.coach-titles {
+    margin: 8px 0 0;
+    padding: 0;
+    list-style: none;
+}
+
+.coach-titles li {
+    padding: 6px 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+#coachDeskPrep {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+#coachDeskPrep[hidden] {
+    display: none;
+}
+
 .social-open.soc-hot {
     animation: socHot 0.7s ease 4;
     border-color: #e11d48;

@@ -1411,6 +1411,11 @@ function fameValue() {
     return clamp(typeof player.fame === "number" ? player.fame : 50, 0, 99);
 }
 
+function clubRepValue() {
+    if (!player) return 50;
+    return clamp(typeof player.clubRep === "number" ? player.clubRep : fameValue(), 1, 99);
+}
+
 function fameRank(n) {
     if (n >= 90) return t("fame_legend");
     if (n >= 75) return t("fame_star");
@@ -5413,7 +5418,7 @@ function messiChipPing() {
     if (!who || chatWaiting(who.id)) return;
     const now = Date.now();
     const open = chatOpen(who.id);
-    if (now - lastMessiPing < (open ? 18000 : 60000)) return;
+    if (now - lastMessiPing < (open ? 90000 : 240000)) return;
     if (!open && unreadFor(who.id) > 0) return;
     const thread = player.socChat[who.id] || [];
     const last = thread.length ? chatPlain(thread[thread.length - 1].text) : "";
@@ -5428,7 +5433,7 @@ function friendPing(force) {
     ensureFriends();
     if (!player.socFriends.length) return;
     const now = Date.now();
-    if (now - lastFriendPing < 600000) return;
+    if (now - lastFriendPing < 1800000) return;
     if (unreadTotal() > 0) return;
     const pool = player.socFriends.filter(function (row) {
         if (row.id === "fin-admin" || isMessiFriend(row) || chatOpen(row.id) || chatWaiting(row.id)) return false;
@@ -5463,7 +5468,23 @@ function dropFriendNote(who, text) {
         renderSocial();
     }
     paintUnread();
+    if (!chatOpen(who.id)) showSocPush(who, text);
     Sfx.ding();
+}
+
+let socPushTimer = 0;
+
+function showSocPush(who, text) {
+    const box = get("socPush");
+    if (!box || !who) return;
+    box.hidden = false;
+    box.setAttribute("data-id", who.id || "");
+    const name = get("socPushWho");
+    const line = get("socPushText");
+    if (name) name.textContent = (who.flag ? who.flag + " " : "") + (who.name || "");
+    if (line) line.textContent = String(text || "").slice(0, 90);
+    clearTimeout(socPushTimer);
+    socPushTimer = setTimeout(function () { box.hidden = true; }, 6000);
 }
 
 function friendSawMatch(info) {
@@ -5490,7 +5511,7 @@ function friendSawMatch(info) {
     }
     ensureFriends();
     if (!player.socFriends.length) return;
-    if (Date.now() - lastFriendPing < 600000) return;
+    if (Date.now() - lastFriendPing < 1800000) return;
     const who = player.socFriends[socSeed(score + "|" + (player.week || 1)) % player.socFriends.length];
     dropFriendNote(who, isMessiFriend(who) ? t("socMessiSaw", { score: score }) : line);
     lastFriendPing = Date.now();
@@ -5962,9 +5983,14 @@ function startCoachCareer(clubName) {
         player.coachWage = pay;
         player.retired = false;
         player.grid = [];
+        if (typeof player.clubRep !== "number") player.clubRep = fameValue();
+        player.clubOffers = null;
         Sfx.start();
         showCareer();
         addLog(t("logCoach", { name: ui(club.name), from: from, pay: money(pay) }));
+        if (inPreseason()) openPreseason();
+        else refreshClubOffers();
+        renderAll();
         save();
         return;
     }
@@ -5992,12 +6018,16 @@ function startCoachCareer(clubName) {
     next.coach = true;
     next.coachFrom = from;
     next.coachWage = pay;
+    next.clubRep = typeof player.fame === "number" ? player.fame : 50;
     next.grid = [];
     player = next;
     Sfx.start();
     showCareer();
     addLog(t("logCoach", { name: ui(club.name), from: from, pay: money(pay) }));
+    if (inPreseason()) openPreseason();
+    else refreshClubOffers();
     addLog(t("logFirstMatch", { n: player.nextMatchWeek }));
+    renderAll();
     save();
 }
 
@@ -6190,8 +6220,132 @@ function openSocial() {
     renderSocial();
 }
 
+function inPreseason() {
+    return !!(player && player.coach) && weekInYear(player.week || 1) <= 2;
+}
+
+function ensurePrep() {
+    if (!player || !player.coach) return;
+    const year = finYear();
+    if (!player.prep || player.prep.year !== year) {
+        player.prep = { year: year, fit: false, tac: false, friend: false };
+    }
+}
+
+function doPrep(kind) {
+    if (!player || !player.coach || !inPreseason()) return;
+    if (kind !== "fit" && kind !== "tac" && kind !== "friend") return;
+    ensurePrep();
+    if (player.prep[kind]) return;
+    player.prep[kind] = true;
+    if (kind === "fit") player.energy = Math.min(100, (player.energy || 0) + 20);
+    if (kind === "friend") addFame(1);
+    addLog(t("logPrep_" + kind));
+    Sfx.ding();
+    updateEnergy();
+    updateFame();
+    save();
+    paintCoachDesk();
+}
+
+function refreshClubOffers() {
+    if (!player || !player.coach) return;
+    const score = Math.max(clubRepValue(), fameValue());
+    const mine = player.name;
+    let pool = CLUBS.filter(function (club) {
+        return club.name !== mine && club.required >= Math.max(0, score - 14) && club.required <= score + 8;
+    });
+    if (pool.length < 2) pool = CLUBS.filter(function (club) { return club.name !== mine; });
+    const pick = [];
+    const start = socSeed(mine + "|" + finYear()) % Math.max(1, pool.length);
+    for (let i = 0; i < pool.length && pick.length < 2; i++) pick.push(pool[(start + i) % pool.length].name);
+    player.clubOffers = pick;
+}
+
+function openPreseason() {
+    if (!player || !player.coach) return;
+    player.grid = [];
+    player.nextMatchWeek = (player.week || 1) + Math.max(1, 3 - weekInYear(player.week || 1));
+    ensurePrep();
+    refreshClubOffers();
+    addLog(t("logPreseason"));
+}
+
+function paintCoachDesk() {
+    const card = get("coachDesk");
+    if (!card) return;
+    const on = !!(player && player.name && player.coach);
+    card.hidden = !on;
+    if (!on) return;
+    if (typeof player.clubRep !== "number") player.clubRep = fameValue();
+    if (!Array.isArray(player.clubOffers)) refreshClubOffers();
+    const club = get("coachDeskClub");
+    if (club) club.textContent = ui(player.name);
+    const rep = get("coachDeskRep");
+    if (rep) rep.textContent = t("clubRepLine", { n: clubRepValue(), rank: fameRank(clubRepValue()) });
+    const list = get("coachDeskTitles");
+    if (list) {
+        list.textContent = "";
+        const rows = (player.titles || []).slice().reverse().slice(0, 4);
+        if (!rows.length) {
+            const li = document.createElement("li");
+            li.textContent = t("coachTitlesEmpty");
+            list.appendChild(li);
+        } else {
+            rows.forEach(function (row) {
+                const li = document.createElement("li");
+                li.textContent = awardName(row.id) + (row.year ? " · " + row.year : "");
+                list.appendChild(li);
+            });
+        }
+    }
+    const prep = get("coachDeskPrep");
+    if (prep) {
+        prep.hidden = !inPreseason();
+        prep.textContent = "";
+        if (inPreseason()) {
+            ensurePrep();
+            const lead = document.createElement("p");
+            lead.className = "hint";
+            lead.textContent = t("prepLead");
+            prep.appendChild(lead);
+            [["fit", "prepFit"], ["tac", "prepTac"], ["friend", "prepFriend"]].forEach(function (row) {
+                const btn = document.createElement("button");
+                btn.type = "button";
+                btn.setAttribute("data-prep", row[0]);
+                btn.disabled = !!player.prep[row[0]];
+                btn.textContent = t(row[1]) + (player.prep[row[0]] ? " · " + t("prepDone") : "");
+                prep.appendChild(btn);
+            });
+        }
+    }
+    const offers = get("coachDeskOffers");
+    if (offers) {
+        offers.textContent = "";
+        const head = document.createElement("p");
+        head.className = "hint";
+        head.textContent = t("offerLead");
+        offers.appendChild(head);
+        (player.clubOffers || []).forEach(function (name) {
+            const club = CLUBS.find(function (row) { return row.name === name; });
+            if (!club || club.name === player.name) return;
+            const btn = document.createElement("button");
+            btn.type = "button";
+            btn.setAttribute("data-offer", club.name);
+            const title = document.createElement("b");
+            title.textContent = club.country + " " + ui(club.name);
+            const meta = document.createElement("small");
+            meta.textContent = t("coachMeta", { city: ui(club.city), league: ui(club.league) }) + " · " + t("coachSign", { pay: money(coachWage(club)) });
+            btn.appendChild(title);
+            btn.appendChild(meta);
+            offers.appendChild(btn);
+        });
+    }
+}
+
 function renderAll() {
     ensureStartSquad();
+    paintCoachDesk();
     updateHeader();
     updateStats();
     updateOverall();
@@ -7044,6 +7198,7 @@ function advanceWeek() {
     if (player.week > 1 && (player.week - 1) % YEAR_WEEKS === 0) {
         bankSeason();
         if (player.mode === "club") auditYear();
+        if (player.coach) openPreseason();
     }
 }
 
@@ -8164,6 +8319,10 @@ function playMatch(useBribe) {
         if (player.boss && player.boss.ovr) {
             squadBoost += clamp((player.boss.ovr - 74) / 90, 0, 0.2);
         }
+        if (player.coach && player.prep && player.prep.year === finYear()) {
+            const bits = (player.prep.fit ? 1 : 0) + (player.prep.tac ? 1 : 0) + (player.prep.friend ? 1 : 0);
+            squadBoost += bits * 0.04;
+        }
     } else if (ownsClub(player.club)) {
         const mates = matesForClub(player.club);
         if (mates.length) {
@@ -8305,12 +8464,17 @@ function playMatch(useBribe) {
         if (result === "win") player.wins = (player.wins || 0) + 1;
         else if (result === "draw") player.draws = (player.draws || 0) + 1;
         else player.losses = (player.losses || 0) + 1;
+        if (player.coach) {
+            const delta = result === "win" ? 4 : result === "draw" ? 1 : -3;
+            player.clubRep = clamp(clubRepValue() + delta, 1, 99);
+        }
     }
 
     if (fixture) {
         fixture.result = result;
         fixture.score = scored + ":" + conceded;
         fixture.pens = pen ? (pen.us + ":" + pen.them) : "";
+        if ((player.grid || []).indexOf(fixture) < 0) player.grid.push(fixture);
     }
 
     if (intl) player.ntCaps = (player.ntCaps || 0) + 1;
@@ -10046,7 +10210,31 @@ function bind() {
     on("calOpenMatch", "click", openEventCal);
     on("calOpenMore", "click", openEventCal);
     on("calClose", "click", function () { Sfx.click(); closeEventCal(); });
-    on("socialOpen", "click", function () { Sfx.click(); openSocial(); });
+        on("socialOpen", "click", function () { Sfx.click(); openSocial(); });
+        const socPush = get("socPush");
+        if (socPush) socPush.addEventListener("click", function () {
+            const id = socPush.getAttribute("data-id");
+            socPush.hidden = true;
+            if (!id) return;
+            Sfx.click();
+            socialPane = "chat";
+            socialFocusId = id;
+            openSocial();
+        });
+        const coachDesk = get("coachDesk");
+        if (coachDesk) coachDesk.addEventListener("click", function (event) {
+            const prep = event.target.closest("[data-prep]");
+            const offer = event.target.closest("[data-offer]");
+            if (prep) {
+                Sfx.click();
+                doPrep(prep.getAttribute("data-prep"));
+                return;
+            }
+            if (offer) {
+                Sfx.click();
+                startCoachCareer(offer.getAttribute("data-offer"));
+            }
+        });
     on("socialClose", "click", function () { Sfx.click(); closeSocial(); });
     on("socialPublish", "click", publishSocial);
     on("socialAd", "click", postAd);
@@ -10707,7 +10895,7 @@ document.addEventListener("DOMContentLoaded", function () {
     loadAuction();
     load();
     showModeScreen();
-    setTimeout(function () { messiChipPing(); }, 8000);
-    setInterval(function () { messiChipPing(); }, 8000);
-    setInterval(function () { friendPing(false); }, 600000);
+    setTimeout(function () { messiChipPing(); }, 240000);
+    setInterval(function () { messiChipPing(); }, 240000);
+    setInterval(function () { friendPing(false); }, 1800000);
 });

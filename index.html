@@ -39,7 +39,7 @@
       #studioSplash .studio-tap{margin:28px 0 0;letter-spacing:.34em;text-transform:uppercase;font-size:11px;font-weight:800;color:#d4af37}
       #studioSplash .studio-line{width:min(220px,46vw);height:1px;margin:10px 0 6px;background:linear-gradient(90deg,transparent,#d4af37,transparent)}
     </style>
-    <link rel="stylesheet" href="style.css?v=178">
+    <link rel="stylesheet" href="style.css?v=179">
 </head>
 <body>
 
@@ -373,6 +373,10 @@
     </div>
 
     <button type="button" id="socialOpen" class="social-open" data-i18n="socOpen">Соцсеть</button>
+    <button type="button" id="socPush" class="soc-push" hidden>
+        <b id="socPushWho"></b>
+        <span id="socPushText"></span>
+    </button>
     <p id="crowdLine" class="crowd-line" hidden></p>
 
     <div class="card energy-card">
@@ -411,6 +415,14 @@
     </nav>
 
     <div class="panel on" data-panel="home">
+    <div class="card" id="coachDesk" hidden>
+        <p class="drop-kicker" data-i18n="coachDeskKicker">КЛУБ</p>
+        <h2 id="coachDeskClub"></h2>
+        <p class="hint" id="coachDeskRep"></p>
+        <ul class="coach-titles" id="coachDeskTitles"></ul>
+        <div id="coachDeskPrep" hidden></div>
+        <div class="coach-offers" id="coachDeskOffers"></div>
+    </div>
     <button type="button" id="coachHome" class="mode-btn club" hidden>
         <span data-i18n="modeCoach">🏟️ ТРЕНЕР</span>
         <small data-i18n="modeCoachSub">Настоящий клуб зовёт после карьеры. Контракт и зарплата каждую неделю</small>
@@ -834,7 +846,7 @@
 </div>
 
 <script src="audio.js?v=171" defer></script>
-<script src="loc.js?v=191" defer></script>
-<script src="game.js?v=191" defer></script>
+<script src="loc.js?v=192" defer></script>
+<script src="game.js?v=192" defer></script>
 </body>
 </html>
