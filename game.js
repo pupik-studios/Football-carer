@@ -763,8 +763,8 @@ function setSkin(color) {
 function paintKit() {
     const card = get("kitCard");
     if (!card || !player || !player.name) return;
-    card.hidden = !isClub();
-    if (!isClub()) return;
+    card.hidden = !isClub() || !!player.coach;
+    if (card.hidden) return;
     ensureKit();
     const preview = get("kitPreview");
     if (preview) preview.innerHTML = '<div class="kit-figure">' + kitSvg(player.kit) + "</div>";
@@ -791,7 +791,7 @@ function paintKit() {
 }
 
 function setKit(part, value) {
-    if (!player || !player.name || !isClub()) return;
+    if (!player || !player.name || !isClub() || player.coach) return;
     ensureKit();
     if (part === "skin") {
         setSkin(value);
@@ -818,7 +818,7 @@ function setKit(part, value) {
 }
 
 function takeKitAd(result) {
-    if (!isClub() || !player.kit || !player.kit.ad) return 0;
+    if (!isClub() || player.coach || !player.kit || !player.kit.ad) return 0;
     const rep = fameValue();
     const base = 10 + Math.round((rep / 99) * 90);
     const mul = result === "win" ? 1 : result === "draw" ? 0.6 : 0.35;
@@ -8474,26 +8474,37 @@ function starBoostKeys(pos) {
 
 let clubAsk = null;
 
-function clubBucket(name) {
-    const n = String(name || "");
-    if (/U17|U19|Академия/i.test(n)) return "youth";
-    if (/Real Madrid|Barcelona|Manchester City|Bayern|Manchester United|Atl[eé]tico|PSG/.test(n)) return "elite";
-    if (/Milan|Dortmund|Porto|Ajax|Зенит|Спартак|ЦСКА|Краснодар/.test(n)) return "big";
-    return "local";
-}
-
 function homeClubName() {
     if (!player) return "";
     if (isClub()) return player.name || player.club || "";
     return player.club || "";
 }
 
-function askFactor(bucket, pick) {
-    if (pick !== "b") return 1;
-    if (bucket === "elite") return 1.2;
-    if (bucket === "big") return 1.08;
-    if (bucket === "youth") return 0.7;
-    return 0.82;
+function squadBar() {
+    if (!player) return 60;
+    if (isClub()) {
+        const stars = squadStars();
+        if (!stars.length) return 52;
+        const sum = stars.reduce(function (total, star) { return total + (star.ovr || 60); }, 0);
+        return Math.round(sum / stars.length);
+    }
+    return getOverall();
+}
+
+function clubVerdict(cost, tier) {
+    const squad = squadBar();
+    const fame = fameValue();
+    const cash = player.respect || 0;
+    const pay = Math.max(1, Math.round(cost * (tier === "cheap" ? 0.62 : 1.28)));
+    if (cash < pay) return { ok: false, why: "cash", pay: pay };
+    if (tier === "cheap") {
+        if (squad >= 81 && cost >= 90) return { ok: false, why: "squad", pay: pay };
+        if (fame >= 86 && squad >= 76 && cost >= 160) return { ok: false, why: "fame", pay: pay };
+        return { ok: true, why: "cheap", pay: pay };
+    }
+    if (fame < 58 && pay >= 400) return { ok: false, why: "fame", pay: pay };
+    if (squad < 66 && pay >= 700) return { ok: false, why: "squad", pay: pay };
+    return { ok: true, why: "rich", pay: pay };
 }
 
 function openClubAsk(clubName, kind, done) {
@@ -8502,22 +8513,21 @@ function openClubAsk(clubName, kind, done) {
         if (done) done("busy");
         return;
     }
-    const bucket = clubBucket(clubName);
     clubAsk = { done: done };
     const kicker = get("askKicker");
     const title = get("askTitle");
     const text = get("askText");
     const acts = get("askActs");
     if (kicker) kicker.textContent = t("askKicker");
-    if (title) title.textContent = ui(clubName || "");
-    if (text) text.textContent = t("ask_" + kind + "_" + bucket, { club: ui(clubName || "") });
+    if (title) title.textContent = ui(clubName || homeClubName() || "");
+    if (text) text.textContent = t("askBoard", { club: ui(clubName || homeClubName() || "") });
     if (acts) {
         acts.textContent = "";
-        ["A", "B", "C", "D"].forEach(function (id) {
+        [["cheap", "askCheap"], ["rich", "askRich"], ["off", "askOff"]].forEach(function (row) {
             const btn = document.createElement("button");
             btn.type = "button";
-            btn.setAttribute("data-ask", id);
-            btn.textContent = t("ask" + id);
+            btn.setAttribute("data-ask", row[0]);
+            btn.textContent = t(row[1]);
             acts.appendChild(btn);
         });
     }
@@ -8534,30 +8544,27 @@ function closeClubAsk(pick) {
 
 function chargeAsk(clubName, kind, cost, done) {
     openClubAsk(clubName, kind, function (pick) {
-        const bucket = clubBucket(clubName);
         if (pick === "busy") {
             done(false, 0);
             return;
         }
-        if (!pick || pick === "D") {
+        if (!pick || pick === "off") {
             addLog(t("askLogD", { club: ui(clubName || "") }));
             Sfx.click();
             done(false, 0);
             return;
         }
-        const pay = Math.max(1, Math.round(cost * askFactor(bucket, pick.toLowerCase())));
-        if ((player.respect || 0) < pay) {
+        const verdict = clubVerdict(cost, pick === "cheap" ? "cheap" : "rich");
+        if (!verdict.ok) {
             Sfx.error();
-            addLog(t("askShort", { pay: money(pay), club: ui(clubName || "") }));
+            addLog(t("askNo_" + verdict.why, { club: ui(clubName || ""), pay: money(verdict.pay) }));
             done(false, 0);
             return;
         }
-        player.respect -= pay;
-        if (pick === "C") addFame(1);
-        if (pick === "B" && bucket === "elite") addFame(-1);
-        addLog(t("askLog" + pick, { club: ui(clubName || "") }));
+        player.respect -= verdict.pay;
+        addLog(t(pick === "cheap" ? "askYesCheap" : "askYesRich", { club: ui(clubName || ""), pay: money(verdict.pay) }));
         updateRespect();
-        done(true, pay);
+        done(true, verdict.pay);
     });
 }
 
