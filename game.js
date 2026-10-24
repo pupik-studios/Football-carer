@@ -647,12 +647,19 @@ function buyWear(id) {
             addLog(t("shopNeed", { pay: money(item.price) }));
             return;
         }
-        player.respect -= item.price;
-        player.closet.push(id);
-        addLog(t("shopGot", { name: shopLabel(item) }));
-        Sfx.ding();
-        updateRespect();
-    } else Sfx.click();
+        chargeAsk(homeClubName(), "kit", item.price, function (ok) {
+            if (!ok) return;
+            if (player.closet.indexOf(id) < 0) player.closet.push(id);
+            player.wear[item.slot] = id;
+            addLog(t("shopGot", { name: shopLabel(item) }));
+            Sfx.ding();
+            paintShop();
+            updateHeader();
+            renderSocial();
+            save();
+        });
+        return;
+    }
     player.wear[item.slot] = id;
     paintShop();
     updateHeader();
@@ -2990,6 +2997,42 @@ function clubTaleBeats() {
                 { id: "c", label: "c3c", log: "c3clog", cash: 100, end: "school" },
                 { id: "d", label: "c3d", log: "c3dlog", fame: -1, cash: 20, end: "shut" }
             ]
+        },
+        {
+            id: "derby",
+            title: "c4t",
+            text: function () { return t("c4" + ((player.tale && player.tale.tone) || "crowd")); },
+            ready: function () { return (player.matches || 0) >= 3 && (player.week || 1) >= 8; },
+            picks: [
+                { id: "a", label: "c4a", log: "c4alog", fame: 2 },
+                { id: "b", label: "c4b", log: "c4blog", cash: 60 },
+                { id: "c", label: "c4c", log: "c4clog", fame: 1 },
+                { id: "d", label: "c4d", log: "c4dlog", fame: -1 }
+            ]
+        },
+        {
+            id: "office",
+            title: "c5t",
+            text: function () { return t("c5" + ((player.tale && player.tale.tone) || "crowd")); },
+            ready: function () { return (player.week || 1) >= 14; },
+            picks: [
+                { id: "a", label: "c5a", log: "c5alog", fame: 2, cash: 40 },
+                { id: "b", label: "c5b", log: "c5blog", cash: 120, fame: -1 },
+                { id: "c", label: "c5c", log: "c5clog", fame: 1 },
+                { id: "d", label: "c5d", log: "c5dlog", fame: 1 }
+            ]
+        },
+        {
+            id: "season",
+            title: "c6t",
+            text: function () { return t("c6" + ((player.tale && player.tale.tone) || "crowd")); },
+            ready: function () { return (player.week || 1) >= 22; },
+            picks: [
+                { id: "a", label: "c6a", log: "c6alog", fame: 2, end: "people" },
+                { id: "b", label: "c6b", log: "c6blog", cash: 80, end: "money" },
+                { id: "c", label: "c6c", log: "c6clog", fame: 1, end: "ground" },
+                { id: "d", label: "c6d", log: "c6dlog", fame: 1, end: "open" }
+            ]
         }
     ];
 }
@@ -3031,6 +3074,42 @@ function taleBeats() {
                 { id: "b", label: "tale3b", log: "tale3blog", fame: 1, stat: "physical", statN: 2, end: "b" },
                 { id: "c", label: "tale3c", log: "tale3clog", fame: 2, stat: "passing", cash: 40, end: "c" },
                 { id: "d", label: "tale3d", log: "tale3dlog", fame: -1, stat: "shooting", cash: 30, end: "d" }
+            ]
+        },
+        {
+            id: "derby",
+            title: "tale4t",
+            text: function () { return t("tale4" + ((player.tale && player.tale.tone) || "team")); },
+            ready: function () { return (player.matches || 0) >= 3 && (player.week || 1) >= 8; },
+            picks: [
+                { id: "a", label: "tale4a", log: "tale4alog", fame: 1, stat: "physical" },
+                { id: "b", label: "tale4b", log: "tale4blog", fame: 2, cash: 40 },
+                { id: "c", label: "tale4c", log: "tale4clog", stat: "passing" },
+                { id: "d", label: "tale4d", log: "tale4dlog", fame: -1 }
+            ]
+        },
+        {
+            id: "agent",
+            title: "tale5t",
+            text: function () { return t("tale5" + ((player.tale && player.tale.tone) || "team")); },
+            ready: function () { return (player.week || 1) >= 14; },
+            picks: [
+                { id: "a", label: "tale5a", log: "tale5alog", fame: 1 },
+                { id: "b", label: "tale5b", log: "tale5blog", fame: 2, cash: 50 },
+                { id: "c", label: "tale5c", log: "tale5clog", stat: "vision" },
+                { id: "d", label: "tale5d", log: "tale5dlog", fame: 1, cash: -15 }
+            ]
+        },
+        {
+            id: "letter",
+            title: "tale6t",
+            text: function () { return t("tale6" + ((player.tale && player.tale.tone) || "team")); },
+            ready: function () { return (player.week || 1) >= 22; },
+            picks: [
+                { id: "a", label: "tale6a", log: "tale6alog", fame: 2, end: "stay" },
+                { id: "b", label: "tale6b", log: "tale6blog", fame: 1, cash: 70, end: "exit" },
+                { id: "c", label: "tale6c", log: "tale6clog", stat: "stamina", end: "bus" },
+                { id: "d", label: "tale6d", log: "tale6dlog", fame: -1, end: "ink" }
             ]
         }
     ];
@@ -6294,16 +6373,18 @@ function buyGear() {
         addLog(t("gearNeed", { pay: money(cost) }));
         return;
     }
-    player.respect -= cost;
-    ensureGear();
-    player.gear.at = player.matches || 0;
-    player.gear.every = player.gear.every === 10 ? 11 : 10;
-    Sfx.ding();
-    addLog(t("gearNew", { pay: money(cost), n: player.gear.every }));
-    updateRespect();
-    paintGear();
-    updateScheduleUI();
-    save();
+    chargeAsk(homeClubName(), "yard", cost, function (ok, pay) {
+        if (!ok) return;
+        ensureGear();
+        player.gear.at = player.matches || 0;
+        player.gear.every = player.gear.every === 10 ? 11 : 10;
+        Sfx.ding();
+        addLog(t("gearNew", { pay: money(pay), n: player.gear.every }));
+        updateRespect();
+        paintGear();
+        updateScheduleUI();
+        save();
+    });
 }
 
 function ensureStadium() {
@@ -6358,14 +6439,16 @@ function buyYardItem(group, id) {
         addLog(t(group === "props" ? "propNeed" : "upNeed", { name: t("yard_" + id), pay: money(row.cost) }));
         return;
     }
-    player.respect -= row.cost;
-    player.yard[group][id] = true;
-    Sfx.ding();
-    addLog(t(group === "props" ? "propBuy" : "upBuy", { name: t("yard_" + id), pay: money(row.cost) }));
-    updateRespect();
-    paintStadium();
-    updateScheduleUI();
-    save();
+    chargeAsk(homeClubName(), "yard", row.cost, function (ok, pay) {
+        if (!ok) return;
+        player.yard[group][id] = true;
+        Sfx.ding();
+        addLog(t(group === "props" ? "propBuy" : "upBuy", { name: t("yard_" + id), pay: money(pay) }));
+        updateRespect();
+        paintStadium();
+        updateScheduleUI();
+        save();
+    });
 }
 
 function buyYard(kind) {
@@ -6378,13 +6461,15 @@ function buyYard(kind) {
         addLog(t(kind === "lines" ? "linesNeed" : "staffNeed", { pay: money(cost) }));
         return;
     }
-    player.respect -= cost;
-    player.yard[kind] = true;
-    Sfx.ding();
-    addLog(t(kind === "lines" ? "linesBuy" : "staffBuy", { pay: money(cost) }));
-    updateRespect();
-    paintStadium();
-    save();
+    chargeAsk(homeClubName(), "yard", cost, function (ok, pay) {
+        if (!ok) return;
+        player.yard[kind] = true;
+        Sfx.ding();
+        addLog(t(kind === "lines" ? "linesBuy" : "staffBuy", { pay: money(pay) }));
+        updateRespect();
+        paintStadium();
+        save();
+    });
 }
 
 function paintStadium() {
@@ -7829,13 +7914,18 @@ function buyoutTeam() {
         addLog(t("buyoutNeed", { pay: money(BUYOUT) }));
         return;
     }
-    player.respect -= BUYOUT;
-    boughtClubs().push(player.club);
-    Sfx.transferBig(70);
-    addLog(t("logBuyout", { club: ui(player.club), n: mates.length, pay: money(BUYOUT) }));
-    showAura("transfer", "−" + money(BUYOUT), ui(player.club), t("buyoutYours"), "#ffd83d", 1800);
-    renderAll();
-    save();
+    const clubName = player.club;
+    const count = mates.length;
+    chargeAsk(clubName, "player", BUYOUT, function (ok, pay) {
+        if (!ok) return;
+        if (ownsClub(clubName)) return;
+        boughtClubs().push(clubName);
+        Sfx.transferBig(70);
+        addLog(t("logBuyout", { club: ui(clubName), n: count, pay: money(pay) }));
+        showAura("transfer", "−" + money(pay), ui(clubName), t("buyoutYours"), "#ffd83d", 1800);
+        renderAll();
+        save();
+    });
 }
 
 function playMatch(useBribe) {
@@ -8359,6 +8449,95 @@ function starBoostKeys(pos) {
     return ["pace", "defending"];
 }
 
+let clubAsk = null;
+
+function clubBucket(name) {
+    const n = String(name || "");
+    if (/U17|U19|Академия/i.test(n)) return "youth";
+    if (/Real Madrid|Barcelona|Manchester City|Bayern|Manchester United|Atl[eé]tico|PSG/.test(n)) return "elite";
+    if (/Milan|Dortmund|Porto|Ajax|Зенит|Спартак|ЦСКА|Краснодар/.test(n)) return "big";
+    return "local";
+}
+
+function homeClubName() {
+    if (!player) return "";
+    if (isClub()) return player.name || player.club || "";
+    return player.club || "";
+}
+
+function askFactor(bucket, pick) {
+    if (pick !== "b") return 1;
+    if (bucket === "elite") return 1.2;
+    if (bucket === "big") return 1.08;
+    if (bucket === "youth") return 0.7;
+    return 0.82;
+}
+
+function openClubAsk(clubName, kind, done) {
+    const box = get("askOverlay");
+    if (!box || clubAsk) {
+        if (done) done("busy");
+        return;
+    }
+    const bucket = clubBucket(clubName);
+    clubAsk = { done: done };
+    const kicker = get("askKicker");
+    const title = get("askTitle");
+    const text = get("askText");
+    const acts = get("askActs");
+    if (kicker) kicker.textContent = t("askKicker");
+    if (title) title.textContent = ui(clubName || "");
+    if (text) text.textContent = t("ask_" + kind + "_" + bucket, { club: ui(clubName || "") });
+    if (acts) {
+        acts.textContent = "";
+        ["A", "B", "C", "D"].forEach(function (id) {
+            const btn = document.createElement("button");
+            btn.type = "button";
+            btn.setAttribute("data-ask", id);
+            btn.textContent = t("ask" + id);
+            acts.appendChild(btn);
+        });
+    }
+    box.hidden = false;
+}
+
+function closeClubAsk(pick) {
+    const job = clubAsk;
+    clubAsk = null;
+    const box = get("askOverlay");
+    if (box) box.hidden = true;
+    if (job && job.done) job.done(pick);
+}
+
+function chargeAsk(clubName, kind, cost, done) {
+    openClubAsk(clubName, kind, function (pick) {
+        const bucket = clubBucket(clubName);
+        if (pick === "busy") {
+            done(false, 0);
+            return;
+        }
+        if (!pick || pick === "D") {
+            addLog(t("askLogD", { club: ui(clubName || "") }));
+            Sfx.click();
+            done(false, 0);
+            return;
+        }
+        const pay = Math.max(1, Math.round(cost * askFactor(bucket, pick.toLowerCase())));
+        if ((player.respect || 0) < pay) {
+            Sfx.error();
+            addLog(t("askShort", { pay: money(pay), club: ui(clubName || "") }));
+            done(false, 0);
+            return;
+        }
+        player.respect -= pay;
+        if (pick === "C") addFame(1);
+        if (pick === "B" && bucket === "elite") addFame(-1);
+        addLog(t("askLog" + pick, { club: ui(clubName || "") }));
+        updateRespect();
+        done(true, pay);
+    });
+}
+
 function signStar(star) {
     Sfx.unlock();
     if (!isClub()) return;
@@ -8369,27 +8548,31 @@ function signStar(star) {
         addLog(t("logSquadFull"));
         return;
     }
-    if ((player.respect || 0) < starCost(star.ovr, star)) {
+    const cost = starCost(star.ovr, star);
+    if ((player.respect || 0) < cost) {
         Sfx.error();
-        addLog(t("logNeedStar", { pay: money(starCost(star.ovr, star)), name: shown(star) }));
+        addLog(t("logNeedStar", { pay: money(cost), name: shown(star) }));
         return;
     }
-    player.respect -= starCost(star.ovr, star);
-    player.squad.push(star.id);
-    const gain = Math.max(1, Math.round((star.ovr - 74) / 5));
-    starBoostKeys(star.pos).forEach((key) => {
-        if (typeof player.stats[key] === "number") {
-            player.stats[key] = Math.min(99, player.stats[key] + gain);
+    chargeAsk(star.club || homeClubName(), "player", cost, function (ok, pay) {
+        if (!ok) return;
+        if (player.squad.indexOf(star.id) >= 0) return;
+        player.squad.push(star.id);
+        const gain = Math.max(1, Math.round((star.ovr - 74) / 5));
+        starBoostKeys(star.pos).forEach((key) => {
+            if (typeof player.stats[key] === "number") {
+                player.stats[key] = Math.min(99, player.stats[key] + gain);
+            }
+        });
+        Sfx.transferBig(star.ovr);
+        addLog(t("logBought", { flag: star.flag, name: shown(star), pos: star.pos, ovr: star.ovr, pay: money(pay) }));
+        if (lineupOf(squadStars()).bench.some(function (row) { return row.id === star.id; })) {
+            addLog(t("logBench", { name: shown(star), ovr: star.ovr }));
         }
+        showAura("transfer", "−" + money(pay), shown(star), ui(star.club) + " · " + star.pos + " " + star.ovr, "#ffd83d", 1800);
+        renderAll();
+        save();
     });
-    Sfx.transferBig(star.ovr);
-    addLog(t("logBought", { flag: star.flag, name: shown(star), pos: star.pos, ovr: star.ovr, pay: money(starCost(star.ovr, star)) }));
-    if (lineupOf(squadStars()).bench.some(function (row) { return row.id === star.id; })) {
-        addLog(t("logBench", { name: shown(star), ovr: star.ovr }));
-    }
-    showAura("transfer", "−" + money(starCost(star.ovr, star)), shown(star), ui(star.club) + " · " + star.pos + " " + star.ovr, "#ffd83d", 1800);
-    renderAll();
-    save();
 }
 
 function releaseStar(star) {
@@ -8677,15 +8860,18 @@ function buyVouchers(n, cost) {
     if (!player || !isClub()) return;
     ensureDraft();
     if ((player.respect || 0) < cost) return;
-    player.respect -= cost;
-    player.draftTokens += n;
-    save();
-    updateRespect();
-    addLog(t("logVoucher", { n: n, cost: money(cost) }));
-    updateMarket();
-    updateSquad();
-    updateDrop();
-    Sfx.ding();
+    chargeAsk(homeClubName(), "slip", cost, function (ok, pay) {
+        if (!ok) return;
+        ensureDraft();
+        player.draftTokens += n;
+        save();
+        updateRespect();
+        addLog(t("logVoucher", { n: n, cost: money(pay) }));
+        updateMarket();
+        updateSquad();
+        updateDrop();
+        Sfx.ding();
+    });
 }
 
 const ACADEMY_COST = { u17: 220, u19: 480 };
@@ -8706,13 +8892,17 @@ function openAcademy(which) {
         addLog(t("academyNeed", { name: name, pay: money(cost) }));
         return;
     }
-    player.respect -= cost;
-    player.academy[which] = true;
-    Sfx.ding();
-    addLog(t("academyOpen", { name: name, pay: money(cost) }));
-    updateRespect();
-    updateMarket();
-    save();
+    chargeAsk(homeClubName(), "slip", cost, function (ok, pay) {
+        if (!ok) return;
+        ensureAcademy();
+        if (player.academy[which]) return;
+        player.academy[which] = true;
+        Sfx.ding();
+        addLog(t("academyOpen", { name: name, pay: money(pay) }));
+        updateRespect();
+        updateMarket();
+        save();
+    });
 }
 
 function paintAcademyChoice(box) {
@@ -10014,6 +10204,13 @@ document.addEventListener("DOMContentLoaded", function () {
             pickTale(btn.getAttribute("data-pick"));
         });
         if (taleLater) taleLater.addEventListener("click", function () { Sfx.click(); closeTale(); });
+        const askActs = get("askActs");
+        if (askActs) askActs.addEventListener("click", function (event) {
+            const btn = event.target.closest("[data-ask]");
+            if (!btn) return;
+            Sfx.click();
+            closeClubAsk(btn.getAttribute("data-ask"));
+        });
         const liveDraft = get("liveDraft");
         if (liveDraft) liveDraft.addEventListener("click", function () { Sfx.click(); openDraft(); });
         const voucherBuy = get("voucherBuy");
