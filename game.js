@@ -2993,6 +2993,7 @@ function closeDraft() {
 }
 
 function taleKind() {
+    if (player && player.coach) return "coach";
     return isClub() ? "club" : "player";
 }
 
@@ -3002,10 +3003,92 @@ function ensureTale() {
     if (!player.tale || typeof player.tale.step !== "number") {
         player.tale = { step: 0, tone: "", end: "", kind: kind };
     }
+    if (player.coach && player.tale.kind !== "coach") {
+        player.tale = { step: 0, tone: "", end: "", kind: "coach" };
+        return;
+    }
     if (!player.tale.kind) {
         if (kind === "club") player.tale = { step: 0, tone: "", end: "", kind: "club" };
         else player.tale.kind = "player";
     }
+}
+
+function coachTaleBeats() {
+    const tone = (player.tale && player.tale.tone) || "straight";
+    return [
+        {
+            id: "room",
+            title: "k1t",
+            text: function () { return t("k1", { club: ui(player.name) }); },
+            ready: function () { return true; },
+            picks: [
+                { id: "a", label: "k1a", log: "k1alog", fame: 2, tone: "straight" },
+                { id: "b", label: "k1b", log: "k1blog", fame: 1, tone: "soft" },
+                { id: "c", label: "k1c", log: "k1clog", fame: 1, tone: "kids" },
+                { id: "d", label: "k1d", log: "k1dlog", fame: -1, tone: "quiet" }
+            ]
+        },
+        {
+            id: "press",
+            title: "k2t",
+            text: function () { return t("k2" + tone); },
+            ready: function () { return (player.matches || 0) >= 1; },
+            picks: [
+                { id: "a", label: "k2a", log: "k2alog", fame: 1 },
+                { id: "b", label: "k2b", log: "k2blog", fame: 2 },
+                { id: "c", label: "k2c", log: "k2clog", cash: 40 },
+                { id: "d", label: "k2d", log: "k2dlog", fame: -1 }
+            ]
+        },
+        {
+            id: "board",
+            title: "k3t",
+            text: function () { return t("k3" + tone); },
+            ready: function () { return (player.week || 1) >= 6; },
+            picks: [
+                { id: "a", label: "k3a", log: "k3alog", fame: 2 },
+                { id: "b", label: "k3b", log: "k3blog", cash: 60 },
+                { id: "c", label: "k3c", log: "k3clog", fame: 1 },
+                { id: "d", label: "k3d", log: "k3dlog", fame: -1 }
+            ]
+        },
+        {
+            id: "derby",
+            title: "k4t",
+            text: function () { return t("k4" + tone); },
+            ready: function () { return (player.matches || 0) >= 3 && (player.week || 1) >= 8; },
+            picks: [
+                { id: "a", label: "k4a", log: "k4alog", fame: 2 },
+                { id: "b", label: "k4b", log: "k4blog", fame: 1 },
+                { id: "c", label: "k4c", log: "k4clog", cash: 30 },
+                { id: "d", label: "k4d", log: "k4dlog", fame: -1 }
+            ]
+        },
+        {
+            id: "call",
+            title: "k5t",
+            text: function () { return t("k5" + tone, { club: ui(player.name) }); },
+            ready: function () { return (player.week || 1) >= 14; },
+            picks: [
+                { id: "a", label: "k5a", log: "k5alog", fame: 1 },
+                { id: "b", label: "k5b", log: "k5blog", fame: 2 },
+                { id: "c", label: "k5c", log: "k5clog", cash: 40 },
+                { id: "d", label: "k5d", log: "k5dlog", fame: -1 }
+            ]
+        },
+        {
+            id: "close",
+            title: "k6t",
+            text: function () { return t("k6" + tone); },
+            ready: function () { return (player.week || 1) >= 22; },
+            picks: [
+                { id: "a", label: "k6a", log: "k6alog", fame: 2, end: "stay" },
+                { id: "b", label: "k6b", log: "k6blog", fame: 1, end: "step" },
+                { id: "c", label: "k6c", log: "k6clog", cash: 50, end: "bench" },
+                { id: "d", label: "k6d", log: "k6dlog", fame: -1, end: "door" }
+            ]
+        }
+    ];
 }
 
 function clubTaleBeats() {
@@ -3086,6 +3169,7 @@ function clubTaleBeats() {
 }
 
 function taleBeats() {
+    if (player && player.coach) return coachTaleBeats();
     if (isClub()) return clubTaleBeats();
     return [
         {
@@ -3256,22 +3340,23 @@ function paintTale() {
         if (text) text.textContent = beat.text();
         if (open) {
             open.hidden = false;
-            open.textContent = t(isClub() ? "cOpen" : "taleOpen");
+            open.textContent = t(player.coach ? "kOpen" : (isClub() ? "cOpen" : "taleOpen"));
         }
     } else {
         if (open) open.hidden = true;
+        const coach = !!player.coach;
         if (player.tale.step >= taleBeats().length) {
-            const tone = player.tale.tone || (isClub() ? "crowd" : "team");
+            const tone = player.tale.tone || (coach ? "straight" : (isClub() ? "crowd" : "team"));
             const end = player.tale.end || "";
-            const head = (isClub() ? "cEnd_" : "pEnd_") + tone;
-            const tail = (isClub() ? "cClose_" : "pClose_") + end;
-            if (title) title.textContent = end ? t((isClub() ? "cEndT_" : "pEndT_") + tone) : t("taleEndT");
+            const head = (coach ? "kEnd_" : (isClub() ? "cEnd_" : "pEnd_")) + tone;
+            const tail = (coach ? "kClose_" : (isClub() ? "cClose_" : "pClose_")) + end;
+            if (title) title.textContent = end ? t((coach ? "kEndT_" : (isClub() ? "cEndT_" : "pEndT_")) + tone) : t("taleEndT");
             if (text) text.textContent = end ? (t(head) + " " + t(tail)) : t("taleEnd");
         } else {
-            if (title) title.textContent = t(isClub() ? "cWho" : "taleWho");
+            if (title) title.textContent = t(coach ? "kWho" : (isClub() ? "cWho" : "taleWho"));
             if (text) text.textContent = t((player.matches || 0) < 1
-                ? (isClub() ? "cWait" : "taleWait")
-                : (isClub() ? "cWaitLate" : "taleWaitLate"));
+                ? (coach ? "kWait" : (isClub() ? "cWait" : "taleWait"))
+                : (coach ? "kWaitLate" : (isClub() ? "cWaitLate" : "taleWaitLate")));
         }
     }
     const box = get("taleOverlay");
@@ -6248,16 +6333,32 @@ function doPrep(kind) {
     paintCoachDesk();
 }
 
+function coachHere() {
+    const mine = CLUBS.find(function (club) { return club.name === (player && player.name); });
+    return mine ? mine.required : 56;
+}
+
+function offerFits(club) {
+    if (!club || !player || club.name === player.name) return false;
+    const here = coachHere();
+    return club.required <= here + 6 && club.required >= Math.max(0, here - 8);
+}
+
 function refreshClubOffers() {
     if (!player || !player.coach) return;
-    const score = Math.max(clubRepValue(), fameValue());
-    const mine = player.name;
+    const here = coachHere();
+    const rep = clubRepValue();
+    const rise = rep >= here + 8 ? 6 : rep >= here ? 3 : 0;
     let pool = CLUBS.filter(function (club) {
-        return club.name !== mine && club.required >= Math.max(0, score - 14) && club.required <= score + 8;
+        return club.name !== player.name && club.required >= Math.max(0, here - 8) && club.required <= here + rise;
     });
-    if (pool.length < 2) pool = CLUBS.filter(function (club) { return club.name !== mine; });
+    if (!pool.length) {
+        pool = CLUBS.filter(function (club) {
+            return club.name !== player.name && Math.abs(club.required - here) <= 6;
+        });
+    }
     const pick = [];
-    const start = socSeed(mine + "|" + finYear()) % Math.max(1, pool.length);
+    const start = pool.length ? socSeed(player.name + "|" + finYear()) % pool.length : 0;
     for (let i = 0; i < pool.length && pick.length < 2; i++) pick.push(pool[(start + i) % pool.length].name);
     player.clubOffers = pick;
 }
@@ -6278,7 +6379,10 @@ function paintCoachDesk() {
     card.hidden = !on;
     if (!on) return;
     if (typeof player.clubRep !== "number") player.clubRep = fameValue();
-    if (!Array.isArray(player.clubOffers)) refreshClubOffers();
+    const stale = !Array.isArray(player.clubOffers) || player.clubOffers.some(function (name) {
+        return !offerFits(CLUBS.find(function (club) { return club.name === name; }));
+    });
+    if (stale) refreshClubOffers();
     const club = get("coachDeskClub");
     if (club) club.textContent = ui(player.name);
     const rep = get("coachDeskRep");
