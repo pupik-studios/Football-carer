@@ -492,7 +492,7 @@
     <div class="panel" data-panel="train">
     <div class="card">
         <h2 id="trainTitle" data-i18n="training">Тренировка</h2>
-        <p class="hint" id="trainHint">Тренировка: −16 энергии, +1 неделя. Отдых +50 бесплатно (30 сек) или 100% за $100 (1 сек).</p>
+        <p class="hint" id="trainHint">Тренировка: −16 энергии, +1 неделя. Отдых +50 бесплатно (12 сек) или 100% за деньги (1 сек).</p>
         <p class="hint lock-hint" id="restLockHint" hidden></p>
         <div class="train-grid">
             <button type="button" data-train="pace">⚡ Скорость +2</button>
@@ -506,7 +506,7 @@
             <button type="button" data-train="setpieces">Стандарты</button>
         </div>
         <button type="button" id="restBtn" class="rest">Восстановиться +50</button>
-        <button type="button" id="restFastBtn" class="gold">100% за $100 · 1 сек</button>
+        <button type="button" id="restFastBtn" class="gold">100% · 1 сек</button>
     </div>
     </div>
 
@@ -533,9 +533,9 @@
                 <button type="button" data-bet="loss">Поражение</button>
             </div>
             <div class="plan-row" id="betStake">
-                <button type="button" data-stake="50">$50</button>
-                <button type="button" data-stake="200">$200</button>
-                <button type="button" data-stake="500">$500</button>
+                <button type="button" data-stake="50000">$50 тыс</button>
+                <button type="button" data-stake="200000">$200 тыс</button>
+                <button type="button" data-stake="500000">$500 тыс</button>
             </div>
             <button type="button" id="betGo" class="gold">Поставить</button>
         </div>
@@ -596,7 +596,7 @@
         <div class="kit-colors" id="kitShorts"></div>
         <p class="bank-line" data-i18n="kitSocks">Гетры</p>
         <div class="kit-colors" id="kitSocks"></div>
-        <p class="bank-line" data-i18n="kitAd">Реклама · $60</p>
+        <p class="bank-line" data-i18n="kitAd">Реклама · $60 тыс</p>
         <div class="plan-row kit-picks" id="kitAds"></div>
     </div>
     <div class="card stad-card" id="stadClub" hidden>
@@ -666,7 +666,7 @@
         <h2 data-i18n="buyoutTitle">Выкуп</h2>
         <p class="hint" id="buyoutHint"></p>
         <div id="buyoutList" class="market-list"></div>
-        <button type="button" id="buyoutBtn" class="gold">Выкупить · $2000</button>
+        <button type="button" id="buyoutBtn" class="gold">Выкупить · $2 млн</button>
     </div>
     <div class="card">
         <h2 id="transfersTitle">Трансферы</h2>
@@ -805,7 +805,7 @@
     </div>
     <div class="card" id="auctionCareerCard" hidden>
         <h2 data-i18n="auction">Аукцион ЧМ</h2>
-        <p class="hint" data-i18n="auctionHint">Только клуб. $4000, дальше по одному. Выпавшие игроки встают в состав. Радужные — эксклюзив.</p>
+        <p class="hint" data-i18n="auctionHint">Только клуб. $4 млн, дальше по одному. Выпавшие игроки встают в состав. Радужные — эксклюзив.</p>
         <button type="button" id="openAuctionBtn" class="gold" data-i18n="openAuction">🏆 ОТКРЫТЬ АУКЦИОН</button>
     </div>
     <div class="card records-card">
@@ -836,17 +836,17 @@
         <h1 data-i18n="auction">Аукцион ЧМ</h1>
     </header>
     <div class="card">
-        <p class="hint" data-i18n="auctionHow">Плати $4000 и крути по одному. Перекрут слота бесплатный. Когда состав полный, следующая команда снова $4000. Радужные карты — эксклюзив.</p>
+        <p class="hint" data-i18n="auctionHow">Плати $4 млн и крути по одному. Перекрут слота бесплатный. Когда состав полный, следующая команда снова $4 млн. Радужные карты — эксклюзив.</p>
         <p class="meta" id="auctionMeta">Пусто · перекруток: 1</p>
         <div class="pitch auction-pitch" id="auctionPitch"></div>
         <div class="train-grid auction-actions">
-            <button type="button" id="auctionRollAll" class="gold">Крутить · $4000</button>
+            <button type="button" id="auctionRollAll" class="gold">Крутить · $4 млн</button>
         </div>
     </div>
 </div>
 
 <script src="audio.js?v=171" defer></script>
-<script src="loc.js?v=193" defer></script>
-<script src="game.js?v=193" defer></script>
+<script src="loc.js?v=194" defer></script>
+<script src="game.js?v=194" defer></script>
 </body>
 </html>
