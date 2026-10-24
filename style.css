@@ -475,6 +475,19 @@ h2 {
     width: 100%;
 }
 
+.ask-sum {
+    width: 100%;
+    box-sizing: border-box;
+    margin: 0;
+    padding: 12px 14px;
+    border-radius: 12px;
+    border: 1px solid #3a4258;
+    background: #141820;
+    color: #f4f6fb;
+    font: inherit;
+    font-size: 18px;
+}
+
 .drop-kicker {
     margin: 0 0 4px;
     letter-spacing: 0.18em;

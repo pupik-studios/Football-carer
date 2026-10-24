@@ -642,7 +642,7 @@ function buyWear(id) {
         return;
     }
     if (!owned) {
-        if ((player.respect || 0) < item.price) {
+        if (tillShort(item.price)) {
             Sfx.error();
             addLog(t("shopNeed", { pay: money(item.price) }));
             return;
@@ -657,7 +657,7 @@ function buyWear(id) {
             updateHeader();
             renderSocial();
             save();
-        });
+        }, { id: "kit", name: shopLabel(item) });
         return;
     }
     player.wear[item.slot] = id;
@@ -6421,7 +6421,7 @@ function paintGear() {
 function buyGear() {
     if (!player || !player.name || !gearDue()) return;
     const cost = gearCost();
-    if ((player.respect || 0) < cost) {
+    if (tillShort(cost)) {
         Sfx.error();
         addLog(t("gearNeed", { pay: money(cost) }));
         return;
@@ -6437,7 +6437,7 @@ function buyGear() {
         paintGear();
         updateScheduleUI();
         save();
-    });
+    }, { id: "gear" });
 }
 
 function ensureStadium() {
@@ -6487,7 +6487,7 @@ function buyYardItem(group, id) {
     if (!player || !player.name || !row) return;
     ensureYard();
     if (player.yard[group][id]) return;
-    if ((player.respect || 0) < row.cost) {
+    if (tillShort(row.cost)) {
         Sfx.error();
         addLog(t(group === "props" ? "propNeed" : "upNeed", { name: t("yard_" + id), pay: money(row.cost) }));
         return;
@@ -6501,7 +6501,7 @@ function buyYardItem(group, id) {
         paintStadium();
         updateScheduleUI();
         save();
-    });
+    }, { id: id });
 }
 
 function buyYard(kind) {
@@ -6509,7 +6509,7 @@ function buyYard(kind) {
     ensureYard();
     if (player.yard[kind]) return;
     const cost = YARD_COST[kind];
-    if ((player.respect || 0) < cost) {
+    if (tillShort(cost)) {
         Sfx.error();
         addLog(t(kind === "lines" ? "linesNeed" : "staffNeed", { pay: money(cost) }));
         return;
@@ -6522,7 +6522,7 @@ function buyYard(kind) {
         updateRespect();
         paintStadium();
         save();
-    });
+    }, { id: kind });
 }
 
 function paintStadium() {
@@ -6616,6 +6616,18 @@ function upgradeStadium() {
     ensureStadium();
     const next = STADIUM[player.stadium.level + 1];
     if (!next) return;
+    if (player.coach) {
+        chargeAsk(homeClubName(), "stad", next.cost, function (ok) {
+            if (!ok) return;
+            player.stadium.level += 1;
+            Sfx.ding();
+            addLog(t("stadBuilt", { name: t("stad" + player.stadium.level) }));
+            updateRespect();
+            paintStadium();
+            save();
+        }, { id: "stad" });
+        return;
+    }
     if ((player.respect || 0) < next.cost) {
         Sfx.error();
         addLog(t("stadNeed", { pay: money(next.cost) }));
@@ -7973,7 +7985,7 @@ function buyoutTeam() {
         Sfx.error();
         return;
     }
-    if ((player.respect || 0) < BUYOUT) {
+    if (tillShort(BUYOUT)) {
         Sfx.error();
         addLog(t("buyoutNeed", { pay: money(BUYOUT) }));
         return;
@@ -8535,6 +8547,63 @@ function squadBar() {
     return getOverall();
 }
 
+function tillShort(cost) {
+    return !(player && player.coach) && (player.respect || 0) < cost;
+}
+
+function clubPop() {
+    if (!player) return 48;
+    const row = CLUBS.find(function (club) { return club.name === player.name; });
+    if (row) return row.required;
+    return Math.max(40, Math.min(92, fameValue()));
+}
+
+function dealWeight(kind, meta) {
+    const id = meta && meta.id || "";
+    const small = { lines: 1, flags: 1, cones: 1, nets: 1, balls: 1, goals: 2, gear: 2, kit: 1, slip: 1 };
+    const solid = { staff: 3, lights: 4, drain: 4, med: 4, gym: 5, academy: 5, stad: 6 };
+    if (kind === "player") {
+        const ovr = meta && meta.ovr || 60;
+        if (ovr >= 90) return 8;
+        if (ovr >= 84) return 6;
+        if (ovr >= 78) return 4;
+        if (ovr >= 70) return 3;
+        return 1;
+    }
+    if (small[id]) return small[id];
+    if (solid[id]) return solid[id];
+    if (kind === "stad") return 6;
+    if (kind === "yard") return 2;
+    return 2;
+}
+
+function dealListName(kind, meta) {
+    if (meta && meta.name) return meta.name;
+    const id = meta && meta.id || "";
+    if (id === "lines" || id === "staff" || id === "gear" || id === "stad" || id === "slip" || id === "kit" || id === "academy") {
+        return t("askItem_" + id);
+    }
+    if (id) {
+        const label = t("yard_" + id);
+        if (label && label !== "yard_" + id) return label;
+    }
+    return t(kind === "player" ? "askItem_player" : "askItem_yard");
+}
+
+function coachVerdict(pay, kind, meta) {
+    pay = Math.round(Number(pay));
+    if (!isFinite(pay) || pay < 1) return { ok: false, why: "sum", pay: 0 };
+    if (pay > 999999) pay = 999999;
+    const cash = player.respect || 0;
+    if (cash < pay) return { ok: false, why: "cash", pay: pay };
+    const pop = clubPop();
+    const weight = dealWeight(kind, meta);
+    const tight = pop >= 78 ? 22 : pop >= 52 ? 40 : 140;
+    if (weight <= 2 && pay > weight * tight) return { ok: false, why: "list", pay: pay };
+    if (pay > weight * tight * 3) return { ok: false, why: "list", pay: pay };
+    return { ok: true, why: "deal", pay: pay };
+}
+
 function clubVerdict(cost, tier) {
     const squad = squadBar();
     const fame = fameValue();
@@ -8551,65 +8620,116 @@ function clubVerdict(cost, tier) {
     return { ok: true, why: "rich", pay: pay };
 }
 
-function openClubAsk(clubName, kind, done) {
+function openClubAsk(clubName, kind, done, meta) {
     const box = get("askOverlay");
     if (!box || clubAsk) {
         if (done) done("busy");
         return;
     }
-    clubAsk = { done: done };
+    const coach = !!(player && player.coach);
+    clubAsk = { done: done, coach: coach };
     const kicker = get("askKicker");
     const title = get("askTitle");
     const text = get("askText");
     const acts = get("askActs");
+    const who = ui(clubName || homeClubName() || "");
     if (kicker) kicker.textContent = t("askKicker");
-    if (title) title.textContent = ui(clubName || homeClubName() || "");
-    if (text) text.textContent = t("askBoard", { club: ui(clubName || homeClubName() || "") });
+    if (title) title.textContent = who;
+    if (text) {
+        text.textContent = coach
+            ? t("askDeal", { club: who, list: dealListName(kind, meta) })
+            : t("askBoard", { club: who });
+    }
     if (acts) {
         acts.textContent = "";
-        [["cheap", "askCheap"], ["rich", "askRich"], ["off", "askOff"]].forEach(function (row) {
-            const btn = document.createElement("button");
-            btn.type = "button";
-            btn.setAttribute("data-ask", row[0]);
-            btn.textContent = t(row[1]);
-            acts.appendChild(btn);
-        });
+        if (coach) {
+            const input = document.createElement("input");
+            input.id = "askSum";
+            input.className = "ask-sum";
+            input.type = "number";
+            input.inputMode = "numeric";
+            input.min = "1";
+            input.placeholder = t("askSumPh");
+            input.addEventListener("keydown", function (event) {
+                if (event.key !== "Enter") return;
+                event.preventDefault();
+                Sfx.click();
+                closeClubAsk("send", input.value);
+            });
+            acts.appendChild(input);
+            [["send", "askSend"], ["off", "askOff"]].forEach(function (row) {
+                const btn = document.createElement("button");
+                btn.type = "button";
+                btn.setAttribute("data-ask", row[0]);
+                btn.textContent = t(row[1]);
+                acts.appendChild(btn);
+            });
+        } else {
+            [["cheap", "askCheap"], ["rich", "askRich"], ["off", "askOff"]].forEach(function (row) {
+                const btn = document.createElement("button");
+                btn.type = "button";
+                btn.setAttribute("data-ask", row[0]);
+                btn.textContent = t(row[1]);
+                acts.appendChild(btn);
+            });
+        }
     }
     box.hidden = false;
 }
 
-function closeClubAsk(pick) {
+function closeClubAsk(pick, sum) {
     const job = clubAsk;
     clubAsk = null;
     const box = get("askOverlay");
     if (box) box.hidden = true;
-    if (job && job.done) job.done(pick);
+    if (job && job.done) job.done(pick, sum);
 }
 
-function chargeAsk(clubName, kind, cost, done) {
-    openClubAsk(clubName, kind, function (pick) {
+function chargeAsk(clubName, kind, cost, done, meta) {
+    const coach = !!(player && player.coach);
+    const who = coach ? (homeClubName() || clubName) : clubName;
+    openClubAsk(who, kind, function (pick, sum) {
         if (pick === "busy") {
             done(false, 0);
             return;
         }
         if (!pick || pick === "off") {
-            addLog(t("askLogD", { club: ui(clubName || "") }));
+            addLog(t("askLogD", { club: ui(who || "") }));
             Sfx.click();
             done(false, 0);
+            return;
+        }
+        if (coach) {
+            const verdict = coachVerdict(sum, kind, meta);
+            const list = dealListName(kind, meta);
+            if (!verdict.ok) {
+                Sfx.error();
+                addLog(t("askNo_" + verdict.why, {
+                    club: ui(who || ""),
+                    pay: money(verdict.pay),
+                    list: list
+                }));
+                done(false, 0);
+                return;
+            }
+            player.respect -= verdict.pay;
+            addLog(t("askYesDeal", { club: ui(who || ""), pay: money(verdict.pay), list: list }));
+            updateRespect();
+            done(true, verdict.pay);
             return;
         }
         const verdict = clubVerdict(cost, pick === "cheap" ? "cheap" : "rich");
         if (!verdict.ok) {
             Sfx.error();
-            addLog(t("askNo_" + verdict.why, { club: ui(clubName || ""), pay: money(verdict.pay) }));
+            addLog(t("askNo_" + verdict.why, { club: ui(who || ""), pay: money(verdict.pay) }));
             done(false, 0);
             return;
         }
         player.respect -= verdict.pay;
-        addLog(t(pick === "cheap" ? "askYesCheap" : "askYesRich", { club: ui(clubName || ""), pay: money(verdict.pay) }));
+        addLog(t(pick === "cheap" ? "askYesCheap" : "askYesRich", { club: ui(who || ""), pay: money(verdict.pay) }));
         updateRespect();
         done(true, verdict.pay);
-    });
+    }, meta);
 }
 
 function signStar(star) {
@@ -8623,7 +8743,7 @@ function signStar(star) {
         return;
     }
     const cost = starCost(star.ovr, star);
-    if ((player.respect || 0) < cost) {
+    if (tillShort(cost)) {
         Sfx.error();
         addLog(t("logNeedStar", { pay: money(cost), name: shown(star) }));
         return;
@@ -8646,7 +8766,7 @@ function signStar(star) {
         showAura("transfer", "−" + money(pay), shown(star), ui(star.club) + " · " + star.pos + " " + star.ovr, "#ffd83d", 1800);
         renderAll();
         save();
-    });
+    }, { id: star.id, ovr: star.ovr, name: shown(star) });
 }
 
 function releaseStar(star) {
@@ -8933,7 +9053,7 @@ const DRAFT_SHOP = [
 function buyVouchers(n, cost) {
     if (!player || !isClub()) return;
     ensureDraft();
-    if ((player.respect || 0) < cost) return;
+    if (tillShort(cost)) return;
     chargeAsk(homeClubName(), "slip", cost, function (ok, pay) {
         if (!ok) return;
         ensureDraft();
@@ -8945,7 +9065,7 @@ function buyVouchers(n, cost) {
         updateSquad();
         updateDrop();
         Sfx.ding();
-    });
+    }, { id: "slip" });
 }
 
 const ACADEMY_COST = { u17: 220, u19: 480 };
@@ -8961,7 +9081,7 @@ function openAcademy(which) {
     if (player.academy[which]) return;
     const cost = ACADEMY_COST[which];
     const name = which.toUpperCase();
-    if ((player.respect || 0) < cost) {
+    if (tillShort(cost)) {
         Sfx.error();
         addLog(t("academyNeed", { name: name, pay: money(cost) }));
         return;
@@ -8976,7 +9096,7 @@ function openAcademy(which) {
         updateRespect();
         updateMarket();
         save();
-    });
+    }, { id: "academy", name: name });
 }
 
 function paintAcademyChoice(box) {
@@ -9023,7 +9143,7 @@ function hireBoss(id) {
     }
     const boss = BOSS_MARKET.find(function (row) { return row.id === id; });
     if (!boss || (player.boss && player.boss.id === boss.id)) return;
-    if ((player.respect || 0) < boss.cost) {
+    if (tillShort(boss.cost)) {
         Sfx.error();
         addLog(t("bossNeed", { name: shown(boss), pay: money(boss.cost) }));
         return;
@@ -9043,7 +9163,7 @@ function hireBoss(id) {
         Sfx.transferBig(boss.ovr);
         updateMarket();
         save();
-    });
+    }, { id: boss.id, ovr: boss.ovr, name: shown(boss) });
 }
 
 function paintBossMarket(box) {
@@ -10389,7 +10509,9 @@ document.addEventListener("DOMContentLoaded", function () {
             const btn = event.target.closest("[data-ask]");
             if (!btn) return;
             Sfx.click();
-            closeClubAsk(btn.getAttribute("data-ask"));
+            const pick = btn.getAttribute("data-ask");
+            const input = get("askSum");
+            closeClubAsk(pick, pick === "send" && input ? input.value : "");
         });
         const liveDraft = get("liveDraft");
         if (liveDraft) liveDraft.addEventListener("click", function () { Sfx.click(); openDraft(); });
