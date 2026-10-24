@@ -9051,12 +9051,14 @@ function coachVerdict(pay, kind, meta) {
     return { ok: true, why: "deal", pay: pay };
 }
 
-function saleVerdict(star, pay) {
-    pay = Math.round(Number(pay));
-    const fee = starCost(star.ovr, star);
-    if (!isFinite(pay) || pay < 1) return { ok: false, why: "sum", pay: 0 };
-    if (pay < fee * 0.5) return { ok: false, why: "low", pay: pay };
-    if (pay > fee * 1.1) return { ok: false, why: "high", pay: pay };
+function saleVerdict(star) {
+    return { ok: true, why: "deal", pay: starCost(star.ovr, star) };
+}
+
+function playerBuyVerdict(pay) {
+    pay = Math.max(1, Math.round(pay || 0));
+    if ((player.respect || 0) < pay) return { ok: false, why: "cash", pay: pay };
+    if (pay > clubBudget()) return { ok: false, why: "fame", pay: pay };
     return { ok: true, why: "deal", pay: pay };
 }
 
@@ -9084,7 +9086,7 @@ function openClubAsk(clubName, kind, done, meta) {
     }
     const coach = !!(player && player.coach);
     const sale = kind === "sale";
-    const noSelf = kind === "player" || sale;
+    const board = kind === "player" || sale;
     clubAsk = { done: done, coach: coach };
     const kicker = get("askKicker");
     const title = get("askTitle");
@@ -9098,7 +9100,7 @@ function openClubAsk(clubName, kind, done, meta) {
         const list = dealListName(kind, meta);
         text.textContent = sale
             ? t("askSale", { club: who, list: list, fair: fair })
-            : (coach && kind === "player")
+            : kind === "player"
                 ? t("askPlayer", { club: who, list: list, fair: fair })
                 : coach
                     ? t("askDeal", { club: who, list: list, fair: fair })
@@ -9106,7 +9108,15 @@ function openClubAsk(clubName, kind, done, meta) {
     }
     if (acts) {
         acts.textContent = "";
-        if (coach || sale) {
+        if (board) {
+            [[kind === "sale" ? "askClubSell" : "askClub", "club"], ["askOff", "off"]].forEach(function (row) {
+                const btn = document.createElement("button");
+                btn.type = "button";
+                btn.setAttribute("data-ask", row[1]);
+                btn.textContent = t(row[0]);
+                acts.appendChild(btn);
+            });
+        } else if (coach) {
             const input = document.createElement("input");
             input.id = "askSum";
             input.className = "ask-sum";
@@ -9121,7 +9131,7 @@ function openClubAsk(clubName, kind, done, meta) {
                 closeClubAsk("send", input.value);
             });
             acts.appendChild(input);
-            (noSelf ? [["send", "askSend"], ["off", "askOff"]] : [["self", "askSelf"], ["send", "askSend"], ["off", "askOff"]]).forEach(function (row) {
+            [["self", "askSelf"], ["send", "askSend"], ["off", "askOff"]].forEach(function (row) {
                 const btn = document.createElement("button");
                 btn.type = "button";
                 btn.setAttribute("data-ask", row[0]);
@@ -9153,7 +9163,7 @@ function chargeAsk(clubName, kind, cost, done, meta) {
     const coach = !!(player && player.coach);
     const who = coach ? (homeClubName() || clubName) : clubName;
     const dealMeta = Object.assign({}, meta || {});
-    if (coach) dealMeta.fair = cost;
+    if (coach || kind === "player") dealMeta.fair = cost;
     openClubAsk(who, kind, function (pick, sum) {
         if (pick === "busy") {
             done(false, 0);
@@ -9165,13 +9175,32 @@ function chargeAsk(clubName, kind, cost, done, meta) {
             done(false, 0);
             return;
         }
-        if (coach && pick === "self") {
-            if (kind === "player") {
-                Sfx.error();
-                addLog(t("askNo_self"));
+        if (kind === "player") {
+            if (pick !== "club") {
+                addLog(t("askLogD", { club: ui(who || "") }));
                 done(false, 0);
                 return;
             }
+            const listed = Math.max(1, Math.round(cost || 0));
+            const verdict = playerBuyVerdict(listed);
+            const list = dealListName(kind, meta);
+            if (!verdict.ok) {
+                Sfx.error();
+                addLog(t("askNo_" + verdict.why, {
+                    club: ui(who || ""),
+                    pay: money(verdict.pay),
+                    list: list
+                }));
+                done(false, 0);
+                return;
+            }
+            player.respect -= verdict.pay;
+            addLog(t("askYesLook", { club: ui(who || ""), pay: money(verdict.pay), list: list }));
+            updateRespect();
+            done(true, verdict.pay);
+            return;
+        }
+        if (coach && pick === "self") {
             const pay = Math.max(1, Math.round(cost || 0));
             const list = dealListName(kind, meta);
             if ((player.respect || 0) < pay) {
@@ -9262,25 +9291,13 @@ function releaseStar(star) {
     if (!isClub() || !Array.isArray(player.squad)) return;
     if (player.squad.indexOf(star.id) < 0) return;
     const fair = starCost(star.ovr, star);
-    openClubAsk(homeClubName(), "sale", function (pick, sum) {
+    openClubAsk(homeClubName(), "sale", function (pick) {
         if (pick === "busy") return;
-        if (!pick || pick === "off" || pick === "self") {
-            if (pick === "self") {
-                Sfx.error();
-                addLog(t("askNo_self"));
-            } else addLog(t("askLogD", { club: ui(homeClubName() || "") }));
+        if (pick !== "club") {
+            addLog(t("askLogD", { club: ui(homeClubName() || "") }));
             return;
         }
-        const verdict = saleVerdict(star, sum);
-        if (!verdict.ok) {
-            Sfx.error();
-            addLog(t("askNo_" + verdict.why, {
-                club: ui(player.name || ""),
-                pay: money(verdict.pay),
-                list: shown(star)
-            }));
-            return;
-        }
+        const verdict = saleVerdict(star);
         const index = player.squad.indexOf(star.id);
         if (index < 0) return;
         player.squad.splice(index, 1);
