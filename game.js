@@ -3826,16 +3826,20 @@ function updateScheduleUI() {
     }
     const bribeBtn = get("bribeBtn");
     const fee = bribeCost();
-    const canBribe = canPlay && (player.respect || 0) >= fee;
+    const dirty = !!(player.coach);
+    const purse = dirty ? (player.stolen || 0) : (player.respect || 0);
+    const canBribe = canPlay && purse >= fee;
     if (bribeBtn) {
         bribeBtn.disabled = !canBribe;
         bribeBtn.textContent = !due
             ? t("bribeWait")
             : (player.energy < MATCH_COST
                 ? t("lowEnergy")
-                : ((player.respect || 0) < fee
-                    ? t("need") + " " + money(fee)
-                    : t("bribe") + " · " + money(fee) + " · " + t("bribeFine")));
+                : (purse < fee
+                    ? (dirty ? t("bribeStolenNeed", { pay: money(fee), bag: money(player.stolen || 0) }) : t("need") + " " + money(fee))
+                    : (dirty
+                        ? t("bribeStolen", { pay: money(fee), bag: money(player.stolen || 0) })
+                        : t("bribe") + " · " + money(fee) + " · " + t("bribeFine"))));
     }
     updateGridUI();
     updatePlanUI();
@@ -8047,12 +8051,15 @@ function playMatch(useBribe) {
     let bribeFined = false;
     if (useBribe) {
         const fee = bribeCost();
-        if ((player.respect || 0) < fee) {
+        const dirty = !!player.coach;
+        const purse = dirty ? (player.stolen || 0) : (player.respect || 0);
+        if (purse < fee) {
             Sfx.error();
-            addLog(t("logBribeNeed", { pay: money(fee) }));
+            addLog(t(dirty ? "logBribeStolen" : "logBribeNeed", { pay: money(fee) }));
             return;
         }
-        player.respect -= fee;
+        if (dirty) player.stolen = purse - fee;
+        else player.respect -= fee;
         if (Math.random() < clamp(BRIBE_CATCH + (50 - fameValue()) / 250, 0.58, 0.82)) {
             bribeFined = true;
             const fine = fineCost();
@@ -8590,6 +8597,39 @@ function dealListName(kind, meta) {
     return t(kind === "player" ? "askItem_player" : "askItem_yard");
 }
 
+function skimLimit() {
+    const pop = clubPop();
+    if (pop >= 78) return 280;
+    if (pop >= 52) return 520;
+    return 980;
+}
+
+function pocketSkim(pay, cost) {
+    const skim = Math.max(0, Math.round(pay) - Math.round(cost || 0));
+    if (!skim) return 0;
+    player.stolen = (player.stolen || 0) + skim;
+    player.skimmed = (player.skimmed || 0) + skim;
+    return skim;
+}
+
+function catchThief() {
+    if (!player || !player.coach) return false;
+    if ((player.skimmed || 0) < skimLimit()) return false;
+    const fine = Math.max(80, Math.round(player.skimmed * 0.65));
+    const drop = Math.min(28, 12 + Math.round(player.skimmed / 80));
+    player.respect = Math.max(0, (player.respect || 0) - fine);
+    addFame(-drop);
+    const club = player.name || "";
+    player.stolen = 0;
+    player.coach = false;
+    player.coachWage = 0;
+    player.fired = club;
+    addLog(t("logThief", { club: ui(club), pay: money(fine), fame: drop }));
+    Sfx.error();
+    updateFame();
+    return true;
+}
+
 function coachVerdict(pay, kind, meta) {
     pay = Math.round(Number(pay));
     if (!isFinite(pay) || pay < 1) return { ok: false, why: "sum", pay: 0 };
@@ -8637,7 +8677,7 @@ function openClubAsk(clubName, kind, done, meta) {
     if (title) title.textContent = who;
     if (text) {
         text.textContent = coach
-            ? t("askDeal", { club: who, list: dealListName(kind, meta) })
+            ? t("askDeal", { club: who, list: dealListName(kind, meta), fair: money((meta && meta.fair) || 0) })
             : t("askBoard", { club: who });
     }
     if (acts) {
@@ -8688,6 +8728,8 @@ function closeClubAsk(pick, sum) {
 function chargeAsk(clubName, kind, cost, done, meta) {
     const coach = !!(player && player.coach);
     const who = coach ? (homeClubName() || clubName) : clubName;
+    const dealMeta = Object.assign({}, meta || {});
+    if (coach) dealMeta.fair = cost;
     openClubAsk(who, kind, function (pick, sum) {
         if (pick === "busy") {
             done(false, 0);
@@ -8713,7 +8755,10 @@ function chargeAsk(clubName, kind, cost, done, meta) {
                 return;
             }
             player.respect -= verdict.pay;
+            const skim = pocketSkim(verdict.pay, cost);
             addLog(t("askYesDeal", { club: ui(who || ""), pay: money(verdict.pay), list: list }));
+            if (skim) addLog(t("logSkim", { pay: money(skim), bag: money(player.stolen || 0) }));
+            catchThief();
             updateRespect();
             done(true, verdict.pay);
             return;
@@ -8729,7 +8774,7 @@ function chargeAsk(clubName, kind, cost, done, meta) {
         addLog(t(pick === "cheap" ? "askYesCheap" : "askYesRich", { club: ui(who || ""), pay: money(verdict.pay) }));
         updateRespect();
         done(true, verdict.pay);
-    }, meta);
+    }, dealMeta);
 }
 
 function signStar(star) {
