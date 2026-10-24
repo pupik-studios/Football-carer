@@ -3673,6 +3673,11 @@ function updateScheduleUI() {
             retireBtn.disabled = !!player.retired;
             retireBtn.textContent = player.retired ? t("retiredBtn") : t("retireBtn");
         }
+        const coachBtn = get("coachBtn");
+        if (coachBtn) {
+            coachBtn.hidden = !player.retired || isClub();
+            coachBtn.textContent = t("coachBtn");
+        }
         if (player.retired) {
             matchBtn.disabled = true;
             matchBtn.textContent = t("retiredBtn");
@@ -5695,6 +5700,34 @@ function retireCareer() {
     Sfx.champ();
     save();
     renderAll();
+}
+
+function becomeCoach() {
+    if (!player || !player.name || !player.retired || isClub()) return;
+    const typed = prompt(t("coachAsk"), player.name);
+    if (typed == null) return;
+    const clubName = String(typed).trim();
+    if (!clubName) return;
+    const from = player.name;
+    const next = newClub(clubName, nationById(player.nation).city, player.nation, "🏟️");
+    next.respect = player.respect || 0;
+    next.fame = typeof player.fame === "number" ? player.fame : 50;
+    next.bank = player.bank || 0;
+    next.bankPlan = player.bankPlan || "";
+    next.bankUntil = player.bankUntil || 0;
+    next.loan = player.loan || 0;
+    next.loanPlan = player.loanPlan || "";
+    next.titles = Array.isArray(player.titles) ? player.titles : [];
+    next.draftTokens = player.draftTokens || 0;
+    next.exclusives = Array.isArray(player.exclusives) ? player.exclusives : [];
+    next.codeMadrid = !!player.codeMadrid;
+    next.coach = true;
+    next.coachFrom = from;
+    player = next;
+    addLog(t("logCoach", { name: clubName, from: from }));
+    Sfx.start();
+    save();
+    showCareer();
 }
 
 function canAdvertise() {
@@ -9285,6 +9318,7 @@ function bind() {
     on("socialPublish", "click", publishSocial);
     on("socialAd", "click", postAd);
     on("retireBtn", "click", retireCareer);
+    on("coachBtn", "click", becomeCoach);
     on("socialBack", "click", function () {
         Sfx.click();
         socialPane = "feed";
