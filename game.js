@@ -8782,7 +8782,7 @@ function openClubAsk(clubName, kind, done, meta) {
                 closeClubAsk("send", input.value);
             });
             acts.appendChild(input);
-            [["send", "askSend"], ["off", "askOff"]].forEach(function (row) {
+            [["self", "askSelf"], ["send", "askSend"], ["off", "askOff"]].forEach(function (row) {
                 const btn = document.createElement("button");
                 btn.type = "button";
                 btn.setAttribute("data-ask", row[0]);
@@ -8824,6 +8824,21 @@ function chargeAsk(clubName, kind, cost, done, meta) {
             addLog(t("askLogD", { club: ui(who || "") }));
             Sfx.click();
             done(false, 0);
+            return;
+        }
+        if (coach && pick === "self") {
+            const pay = Math.max(1, Math.round(cost || 0));
+            const list = dealListName(kind, meta);
+            if ((player.respect || 0) < pay) {
+                Sfx.error();
+                addLog(t("askNo_cash", { club: ui(who || ""), pay: money(pay), list: list }));
+                done(false, 0);
+                return;
+            }
+            player.respect -= pay;
+            addLog(t("askYesSelf", { pay: money(pay), list: list }));
+            updateRespect();
+            done(true, pay);
             return;
         }
         if (coach) {
