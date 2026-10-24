@@ -9864,7 +9864,41 @@ function updateMarket() {
         const tierOk = marketFilter === "all" || star.tier === marketFilter || (marketFilter === "leg" && star.id === "cr7");
         const posOk = marketPos === "all" || star.pos === marketPos;
         return tierOk && posOk;
-    }).sort(function (a, b) { return (b.ovr || 0) - (a.ovr || 0); });
+    });
+    const posOrder = { GK: 0, LB: 1, CB: 2, RB: 3, CDM: 4, CM: 5, CAM: 6, LW: 7, ST: 8, RW: 9 };
+    const clubAlias = {
+        City: "Manchester City",
+        Bayern: "Bayern Munich",
+        Barcelona: "FC Barcelona",
+        Milan: "AC Milan",
+        Inter: "Интер",
+        "Динамо": "Динамо Москва"
+    };
+    const groups = [];
+    const grouped = {};
+    list.forEach(function (star) {
+        const key = clubAlias[star.club] || star.club || "";
+        if (!grouped[key]) {
+            grouped[key] = { name: key, stars: [] };
+            groups.push(grouped[key]);
+        }
+        grouped[key].stars.push(star);
+    });
+    groups.sort(function (a, b) {
+        const ra = CLUBS.findIndex(function (club) { return club.name === a.name; });
+        const rb = CLUBS.findIndex(function (club) { return club.name === b.name; });
+        const ia = ra < 0 ? 1000 : ra;
+        const ib = rb < 0 ? 1000 : rb;
+        if (ia !== ib) return ia - ib;
+        return String(a.name).localeCompare(String(b.name), "ru");
+    });
+    groups.forEach(function (group) {
+        group.stars.sort(function (a, b) {
+            const pa = posOrder[a.pos] == null ? 50 : posOrder[a.pos];
+            const pb = posOrder[b.pos] == null ? 50 : posOrder[b.pos];
+            return pa - pb || (b.ovr || 0) - (a.ovr || 0);
+        });
+    });
     if (hint) {
         hint.textContent = marketFilter === "rook"
             ? t("academyHint")
@@ -9873,7 +9907,12 @@ function updateMarket() {
     document.querySelectorAll("#marketPos [data-pos]").forEach((btn) => {
         btn.classList.toggle("on", btn.getAttribute("data-pos") === marketPos);
     });
-    list.forEach((star) => {
+    groups.forEach(function (group) {
+        const head = document.createElement("p");
+        head.className = "market-club";
+        head.textContent = t("clubSquad", { club: clubLabel(group.name), n: group.stars.length });
+        box.appendChild(head);
+        group.stars.forEach(function (star) {
         const cost = starCost(star.ovr, star);
         const owned = player.squad.indexOf(star.id) >= 0;
         const row = document.createElement("div");
@@ -9886,10 +9925,7 @@ function updateMarket() {
 
         const who = document.createElement("span");
         who.className = "who";
-        who.textContent = star.flag + " " + shown(star) + " ";
-        const club = document.createElement("small");
-        club.textContent = clubLabel(star.club);
-        who.appendChild(club);
+        who.textContent = star.flag + " " + shown(star);
         row.appendChild(who);
 
         const ovn = document.createElement("span");
@@ -9915,6 +9951,7 @@ function updateMarket() {
             row.appendChild(mark);
         }
         box.appendChild(row);
+        });
     });
 }
 

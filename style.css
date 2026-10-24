@@ -1936,6 +1936,17 @@ button.bench-chip {
     letter-spacing: 0.02em;
 }
 
+.market-club {
+    margin: 0;
+    padding: 8px 10px;
+    background: #12203a;
+    border-top: 1px solid #30466f;
+    border-bottom: 1px solid #30466f;
+    color: #ffd83d;
+    font-size: 13px;
+    font-weight: 700;
+}
+
 .market-row button.sell {
     background: #3d4a66;
     width: 64px;
