@@ -1462,6 +1462,7 @@ function stopAutoSave() {
 }
 
 function opponentPool() {
+    if (player && player.coach && OPPONENTS[player.name]) return OPPONENTS[player.name];
     const table = isClub() ? LEAGUE_OPPONENTS : OPPONENTS;
     return table[player.club] || table["Академия"] || table["Дворовый чемпионат"] || ["Соперник"];
 }
@@ -4099,7 +4100,9 @@ function updateHeader() {
     if (aucCard) aucCard.hidden = !clubMode;
     setFace(get("avatar"), clubMode ? player.name : (player.avatar || "p0"), clubMode, clubMode ? null : wearLook());
     if (get("careerTitle")) {
-        get("careerTitle").textContent = clubMode ? t("myClub") : t("myCareer");
+        get("careerTitle").textContent = clubMode
+            ? (player.coach && player.coachFrom ? t("coachTitle", { name: player.coachFrom }) : t("myClub"))
+            : t("myCareer");
     }
     if (get("tabClub")) get("tabClub").textContent = clubMode ? t("tabClub") : t("tabClubs");
     if (get("transfersTitle")) {
@@ -5714,7 +5717,55 @@ function openCoachCreate() {
     selectMode("coach");
 }
 
-function startCoachCareer() {
+function coachWage(club) {
+    return 80 + (club.required || 0) * 12;
+}
+
+function leagueForHire(club) {
+    let hit = LEAGUES[0];
+    LEAGUES.forEach(function (row) {
+        if (row.required <= club.required) hit = row;
+    });
+    return hit;
+}
+
+function coachOfferList() {
+    const score = Math.max(getOverall(), fameValue());
+    const fit = CLUBS.filter(function (club) { return club.required <= score + 6; });
+    const pool = (fit.length ? fit : CLUBS.slice(0, 1)).slice(-4);
+    const seen = {};
+    pool.forEach(function (club) { seen[club.name] = true; });
+    CLUBS.forEach(function (club) {
+        if (pool.length >= 3) return;
+        if (seen[club.name]) return;
+        seen[club.name] = true;
+        pool.push(club);
+    });
+    return pool.slice(0, 4);
+}
+
+function paintCoachOffers() {
+    const box = get("coachOffers");
+    const lead = get("coachLead");
+    if (lead) lead.textContent = t("coachLead");
+    if (!box) return;
+    box.innerHTML = "";
+    coachOfferList().forEach(function (club) {
+        const pay = coachWage(club);
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.setAttribute("data-hire", club.name);
+        const title = document.createElement("b");
+        title.textContent = club.country + " " + ui(club.name);
+        const meta = document.createElement("small");
+        meta.textContent = t("coachMeta", { city: ui(club.city), league: ui(club.league) }) + " · " + t("coachSign", { pay: money(pay) });
+        btn.appendChild(title);
+        btn.appendChild(meta);
+        box.appendChild(btn);
+    });
+}
+
+function startCoachCareer(clubName) {
     if (!player || !player.name) {
         Sfx.error();
         alert(t("coachNeed"));
@@ -5725,21 +5776,20 @@ function startCoachCareer() {
         alert(t("coachHave"));
         return;
     }
-    const clubName = get("clubName").value.trim();
-    if (!clubName) {
-        Sfx.error();
-        alert(t("alertClubName"));
-        get("clubName").focus();
-        return;
-    }
+    const club = CLUBS.find(function (row) { return row.name === clubName; }) || coachOfferList().slice(-1)[0];
+    if (!club) return;
     if (!player.retired && !confirm(t("retireAsk"))) return;
     const from = player.name;
     if (!player.retired) {
         player.retired = true;
         addTitle("retired", seasonYear(), "");
     }
-    const city = get("clubCity").value.trim() || nationById(selectedNation).city;
-    const next = newClub(clubName, city, selectedNation, selectedAvatar);
+    const league = leagueForHire(club);
+    const pay = coachWage(club);
+    const next = newClub(club.name, club.city, player.nation, "🏟️");
+    next.club = league.name;
+    next.color = club.color;
+    next.accent = club.accent;
     next.respect = player.respect || 0;
     next.fame = typeof player.fame === "number" ? player.fame : 50;
     next.bank = player.bank || 0;
@@ -5753,10 +5803,12 @@ function startCoachCareer() {
     next.codeMadrid = !!player.codeMadrid;
     next.coach = true;
     next.coachFrom = from;
+    next.coachWage = pay;
+    next.grid = [];
     player = next;
     Sfx.start();
     showCareer();
-    addLog(t("logCoach", { name: clubName, from: from }));
+    addLog(t("logCoach", { name: ui(club.name), from: from, pay: money(pay) }));
     addLog(t("logFirstMatch", { n: player.nextMatchWeek }));
     save();
 }
@@ -6038,11 +6090,15 @@ function selectMode(mode) {
     Sfx.unlock();
     Sfx.click();
     selectedMode = mode;
-    const clubLike = mode === "club" || mode === "coach";
     get("modeScreen").style.display = "none";
     get("createScreen").style.display = "block";
     get("playerFields").hidden = mode !== "player";
-    get("clubFields").hidden = !clubLike;
+    get("clubFields").hidden = mode !== "club";
+    if (get("coachFields")) get("coachFields").hidden = mode !== "coach";
+    ["nationLabel", "nationPick", "avatarLabel", "avatarPick"].forEach(function (id) {
+        if (get(id)) get(id).hidden = mode === "coach";
+    });
+    if (get("startBtn")) get("startBtn").hidden = mode === "coach";
     get("createTitle").textContent = mode === "coach"
         ? t("createCoach")
         : (mode === "club" ? t("createClub") : t("createPlayer"));
@@ -6051,12 +6107,14 @@ function selectMode(mode) {
             ? t("newCoach")
             : (mode === "club" ? t("newClub") : t("newPlayer"));
     }
-    get("startBtn").textContent = mode === "coach"
-        ? t("startCoach")
-        : (mode === "club" ? t("startClub") : t("startCareer"));
-    if (clubLike) {
+    get("startBtn").textContent = mode === "club" ? t("startClub") : t("startCareer");
+    if (mode === "coach") {
+        if (player && player.nation) selectedNation = player.nation;
+        paintCoachOffers();
+        return;
+    }
+    if (mode === "club") {
         selectedAvatar = CLUB_AVATARS[0];
-        if (mode === "coach" && player && player.nation) selectedNation = player.nation;
         get("clubName").focus();
         const nat = nationById(selectedNation);
         get("clubCity").placeholder = t("cityEg", { city: nationCity(nat) });
@@ -6759,6 +6817,10 @@ function advanceWeek() {
     }
     payoutBrand();
     payoutSponsors();
+    if (player.coach && player.coachWage) {
+        player.respect = (player.respect || 0) + player.coachWage;
+        addLog(t("logCoachPay", { n: money(player.coachWage) }));
+    }
     clearInjuryIfHealed();
     friendPing(true);
     if (player.week > 1 && (player.week - 1) % YEAR_WEEKS === 0) bankSeason();
@@ -6897,10 +6959,7 @@ function applyTrain(stat) {
 function startCareer() {
     Sfx.unlock();
     Sfx.click();
-    if (selectedMode === "coach") {
-        startCoachCareer();
-        return;
-    }
+    if (selectedMode === "coach") return;
     if (localStorage.getItem(SAVE_KEY) && player && player.name) {
         if (!confirm(t("confirmOverwrite"))) return;
     }
@@ -9304,6 +9363,11 @@ function bind() {
     on("modeClub", "click", function () { selectMode("club"); });
     on("modeCoach", "click", openCoachCreate);
     on("coachHome", "click", openCoachCreate);
+    on("coachOffers", "click", function (event) {
+        const hire = event.target.closest("[data-hire]");
+        if (!hire) return;
+        startCoachCareer(hire.getAttribute("data-hire"));
+    });
     on("modeBattle", "click", startOnlineFromMenu);
     on("modeAuction", "click", showAuction);
     on("auctionBack", "click", function () {

@@ -39,7 +39,7 @@
       #studioSplash .studio-tap{margin:28px 0 0;letter-spacing:.34em;text-transform:uppercase;font-size:11px;font-weight:800;color:#d4af37}
       #studioSplash .studio-line{width:min(220px,46vw);height:1px;margin:10px 0 6px;background:linear-gradient(90deg,transparent,#d4af37,transparent)}
     </style>
-    <link rel="stylesheet" href="style.css?v=176">
+    <link rel="stylesheet" href="style.css?v=177">
 </head>
 <body>
 
@@ -264,7 +264,7 @@
         </button>
         <button type="button" id="modeCoach" class="mode-btn club coach">
             <span data-i18n="modeCoach">🏟️ ТРЕНЕР</span>
-            <small data-i18n="modeCoachSub">После карьеры футболиста: лиги, состав, бюджет. Деньги остаются</small>
+            <small data-i18n="modeCoachSub">Настоящий клуб зовёт после карьеры. Контракт и зарплата каждую неделю</small>
         </button>
         <button type="button" id="modeBattle" class="mode-btn battle">
             <span data-i18n="modeBattle">🌐 ОНЛАЙН БАТЛ</span>
@@ -314,6 +314,10 @@
         <div id="clubFields" hidden>
             <input id="clubName" type="text" data-i18n-placeholder="nameClub" placeholder="Название клуба" maxlength="28" autocomplete="off">
             <input id="clubCity" type="text" data-i18n-placeholder="cityPh" placeholder="Город (например Москва)" maxlength="24" autocomplete="off">
+        </div>
+        <div id="coachFields" hidden>
+            <p class="hint" id="coachLead"></p>
+            <div id="coachOffers" class="coach-offers"></div>
         </div>
         <p class="pick-label" id="nationLabel" data-i18n="nation">Национальность</p>
         <div class="pick-grid nation-pick" id="nationPick"></div>
@@ -400,7 +404,7 @@
     <div class="panel on" data-panel="home">
     <button type="button" id="coachHome" class="mode-btn club" hidden>
         <span data-i18n="modeCoach">🏟️ ТРЕНЕР</span>
-        <small data-i18n="modeCoachSub">После карьеры футболиста: лиги, состав, бюджет. Деньги остаются</small>
+        <small data-i18n="modeCoachSub">Настоящий клуб зовёт после карьеры. Контракт и зарплата каждую неделю</small>
     </button>
     <div class="card drop-card" id="dropCard">
         <p class="drop-kicker" id="dropKicker">ОБНОВЛЕНИЕ</p>
@@ -820,7 +824,7 @@
 </div>
 
 <script src="audio.js?v=171" defer></script>
-<script src="loc.js?v=180" defer></script>
-<script src="game.js?v=180" defer></script>
+<script src="loc.js?v=181" defer></script>
+<script src="game.js?v=182" defer></script>
 </body>
 </html>

@@ -325,6 +325,32 @@ h2 {
     display: none;
 }
 
+.coach-offers {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.coach-offers button {
+    margin: 0;
+    min-height: 76px;
+    text-align: left;
+    text-transform: none;
+    letter-spacing: 0;
+    font-size: 16px;
+}
+
+.coach-offers b,
+.coach-offers small {
+    display: block;
+}
+
+.coach-offers small {
+    margin-top: 4px;
+    color: var(--mute);
+    font-size: 13px;
+}
+
 .mode-btn.battle {
     grid-column: 1 / -1;
     min-height: 108px;
