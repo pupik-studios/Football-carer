@@ -5196,9 +5196,8 @@ function finYear() {
 
 function finCap() {
     const pop = clubPop();
-    if (pop >= 78) return 900;
-    if (pop >= 52) return 420;
-    return 180;
+    const cap = pop >= 78 ? 900 : pop >= 52 ? 420 : 180;
+    return Math.max(500, cap);
 }
 
 function finAsk(raw) {
