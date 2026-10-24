@@ -6114,6 +6114,7 @@ function startCoachCareer(clubName) {
         player.coach = true;
         player.coachFrom = from;
         player.coachWage = pay;
+        player.lossRun = 0;
         player.retired = false;
         player.grid = [];
         if (typeof player.clubRep !== "number") player.clubRep = fameValue();
@@ -6151,6 +6152,7 @@ function startCoachCareer(clubName) {
     next.coach = true;
     next.coachFrom = from;
     next.coachWage = pay;
+    next.lossRun = 0;
     next.clubRep = typeof player.fame === "number" ? player.fame : 50;
     next.grid = [];
     player = next;
@@ -8637,6 +8639,7 @@ function playMatch(useBribe) {
         if (player.coach) {
             const delta = result === "win" ? 4 : result === "draw" ? 1 : -3;
             player.clubRep = clamp(clubRepValue() + delta, 1, 99);
+            noteCoachResult(result);
         }
     }
 
@@ -8791,6 +8794,7 @@ function playMatch(useBribe) {
         maybeCallUp();
         friendSawMatch({ result: result, goals: goals, score: scored + ":" + conceded });
         matchBusy = false;
+        if (coachDueSack()) sackCoach();
         renderAll();
         save();
     }, 1100);
@@ -9009,6 +9013,39 @@ function pocketSkim(pay, cost) {
     player.stolen = (player.stolen || 0) + skim;
     player.skimmed = (player.skimmed || 0) + skim;
     return skim;
+}
+
+function noteCoachResult(result) {
+    if (!player || !player.coach) return;
+    if (result === "loss") {
+        player.lossRun = (player.lossRun || 0) + 1;
+        if (player.lossRun === 3) addLog(t("logSackWarn"));
+        return;
+    }
+    player.lossRun = 0;
+}
+
+function coachDueSack() {
+    return !!(player && player.coach && (player.lossRun || 0) >= 4);
+}
+
+function sackCoach() {
+    if (!player || !player.coach) return;
+    const club = player.name || "";
+    const from = player.coachFrom || "";
+    player.fired = club;
+    player.coach = false;
+    player.coachWage = 0;
+    player.lossRun = 0;
+    player.clubOffers = [];
+    player.retired = true;
+    player.mode = "player";
+    if (from) player.name = from;
+    player.clubRep = clamp((player.clubRep || 50) - 8, 1, 99);
+    addFame(-8);
+    addLog(t("logSacked", { club: ui(club) }));
+    document.body.classList.remove("mode-club");
+    Sfx.error();
 }
 
 function catchThief() {
