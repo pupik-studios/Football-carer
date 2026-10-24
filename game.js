@@ -5599,6 +5599,7 @@ function dropFriendNote(who, text) {
         renderSocial();
     }
     paintUnread();
+    if (who.id === "club-desk") return;
     if (!chatOpen(who.id)) showSocPush(who, text);
     Sfx.ding();
 }
@@ -9229,8 +9230,8 @@ function chargeAsk(clubName, kind, cost, done, meta) {
                         pay: money(verdict.pay),
                         list: list
                     });
+                    addLog(text);
                     if (desk) dropFriendNote(desk, text);
-                    else addLog(text);
                     Sfx.error();
                     done(false, 0);
                     return;
@@ -9351,7 +9352,9 @@ function releaseStar(star) {
             const index = (player.squad || []).indexOf(id);
             const desk = clubDesk();
             if (index < 0) {
-                if (desk) dropFriendNote(desk, t("askGone", { list: shown(card) }));
+                const gone = t("askGone", { list: shown(card) });
+                addLog(gone);
+                if (desk) dropFriendNote(desk, gone);
                 return;
             }
             const verdict = saleVerdict(card);
