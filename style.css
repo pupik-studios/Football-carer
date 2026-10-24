@@ -314,6 +314,17 @@ h2 {
     border-color: #32d583;
 }
 
+.mode-btn.coach,
+#coachHome {
+    grid-column: 1 / -1;
+    width: 100%;
+    margin: 0 0 14px;
+}
+
+#coachHome[hidden] {
+    display: none;
+}
+
 .mode-btn.battle {
     grid-column: 1 / -1;
     min-height: 108px;

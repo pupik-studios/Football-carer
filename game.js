@@ -3673,11 +3673,8 @@ function updateScheduleUI() {
             retireBtn.disabled = !!player.retired;
             retireBtn.textContent = player.retired ? t("retiredBtn") : t("retireBtn");
         }
-        const coachBtn = get("coachBtn");
-        if (coachBtn) {
-            coachBtn.hidden = !player.retired || isClub();
-            coachBtn.textContent = t("coachBtn");
-        }
+        const coachHome = get("coachHome");
+        if (coachHome) coachHome.hidden = !player.retired || isClub();
         if (player.retired) {
             matchBtn.disabled = true;
             matchBtn.textContent = t("retiredBtn");
@@ -5700,16 +5697,49 @@ function retireCareer() {
     Sfx.champ();
     save();
     renderAll();
+    showPanel("home");
 }
 
-function becomeCoach() {
-    if (!player || !player.name || !player.retired || isClub()) return;
-    const typed = prompt(t("coachAsk"), player.name);
-    if (typed == null) return;
-    const clubName = String(typed).trim();
-    if (!clubName) return;
+function openCoachCreate() {
+    if (!player || !player.name) {
+        Sfx.error();
+        alert(t("coachNeed"));
+        return;
+    }
+    if (isClub()) {
+        Sfx.error();
+        alert(t("coachHave"));
+        return;
+    }
+    selectMode("coach");
+}
+
+function startCoachCareer() {
+    if (!player || !player.name) {
+        Sfx.error();
+        alert(t("coachNeed"));
+        return;
+    }
+    if (isClub()) {
+        Sfx.error();
+        alert(t("coachHave"));
+        return;
+    }
+    const clubName = get("clubName").value.trim();
+    if (!clubName) {
+        Sfx.error();
+        alert(t("alertClubName"));
+        get("clubName").focus();
+        return;
+    }
+    if (!player.retired && !confirm(t("retireAsk"))) return;
     const from = player.name;
-    const next = newClub(clubName, nationById(player.nation).city, player.nation, "🏟️");
+    if (!player.retired) {
+        player.retired = true;
+        addTitle("retired", seasonYear(), "");
+    }
+    const city = get("clubCity").value.trim() || nationById(selectedNation).city;
+    const next = newClub(clubName, city, selectedNation, selectedAvatar);
     next.respect = player.respect || 0;
     next.fame = typeof player.fame === "number" ? player.fame : 50;
     next.bank = player.bank || 0;
@@ -5724,10 +5754,11 @@ function becomeCoach() {
     next.coach = true;
     next.coachFrom = from;
     player = next;
-    addLog(t("logCoach", { name: clubName, from: from }));
     Sfx.start();
-    save();
     showCareer();
+    addLog(t("logCoach", { name: clubName, from: from }));
+    addLog(t("logFirstMatch", { n: player.nextMatchWeek }));
+    save();
 }
 
 function canAdvertise() {
@@ -6007,21 +6038,25 @@ function selectMode(mode) {
     Sfx.unlock();
     Sfx.click();
     selectedMode = mode;
+    const clubLike = mode === "club" || mode === "coach";
     get("modeScreen").style.display = "none";
     get("createScreen").style.display = "block";
     get("playerFields").hidden = mode !== "player";
-    get("clubFields").hidden = mode !== "club";
-    get("createTitle").textContent = mode === "club"
-        ? t("createClub")
-        : t("createPlayer");
+    get("clubFields").hidden = !clubLike;
+    get("createTitle").textContent = mode === "coach"
+        ? t("createCoach")
+        : (mode === "club" ? t("createClub") : t("createPlayer"));
     if (get("createHeading")) {
-        get("createHeading").textContent = mode === "club" ? t("newClub") : t("newPlayer");
+        get("createHeading").textContent = mode === "coach"
+            ? t("newCoach")
+            : (mode === "club" ? t("newClub") : t("newPlayer"));
     }
-    get("startBtn").textContent = mode === "club"
-        ? t("startClub")
-        : t("startCareer");
-    if (mode === "club") {
+    get("startBtn").textContent = mode === "coach"
+        ? t("startCoach")
+        : (mode === "club" ? t("startClub") : t("startCareer"));
+    if (clubLike) {
         selectedAvatar = CLUB_AVATARS[0];
+        if (mode === "coach" && player && player.nation) selectedNation = player.nation;
         get("clubName").focus();
         const nat = nationById(selectedNation);
         get("clubCity").placeholder = t("cityEg", { city: nationCity(nat) });
@@ -6036,7 +6071,7 @@ function renderCreatePicks() {
     const nationBox = get("nationPick");
     const avatarBox = get("avatarPick");
     if (!nationBox || !avatarBox) return;
-    const avatars = selectedMode === "club" ? CLUB_AVATARS : PLAYER_AVATARS;
+    const avatars = selectedMode === "club" || selectedMode === "coach" ? CLUB_AVATARS : PLAYER_AVATARS;
     if (avatars.indexOf(selectedAvatar) < 0) selectedAvatar = avatars[0];
 
     nationBox.innerHTML = "";
@@ -6048,7 +6083,7 @@ function renderCreatePicks() {
         btn.addEventListener("click", function () {
             Sfx.click();
             selectedNation = nat.id;
-            if (selectedMode === "club") {
+            if (selectedMode === "club" || selectedMode === "coach") {
             if (nat) get("clubCity").placeholder = t("cityEg", { city: nationCity(nat) });
             }
             renderCreatePicks();
@@ -6058,7 +6093,7 @@ function renderCreatePicks() {
 
     avatarBox.innerHTML = "";
     const label = get("avatarLabel");
-    if (selectedMode !== "club") {
+    if (selectedMode !== "club" && selectedMode !== "coach") {
         if (label) label.textContent = t("shopSkin");
         selectedAvatar = "👦";
         if (SKIN_TONES.indexOf(selectedSkin) < 0) selectedSkin = "#e7b48a";
@@ -6862,6 +6897,10 @@ function applyTrain(stat) {
 function startCareer() {
     Sfx.unlock();
     Sfx.click();
+    if (selectedMode === "coach") {
+        startCoachCareer();
+        return;
+    }
     if (localStorage.getItem(SAVE_KEY) && player && player.name) {
         if (!confirm(t("confirmOverwrite"))) return;
     }
@@ -9263,6 +9302,8 @@ function on(id, ev, fn) {
 function bind() {
     on("modePlayer", "click", function () { selectMode("player"); });
     on("modeClub", "click", function () { selectMode("club"); });
+    on("modeCoach", "click", openCoachCreate);
+    on("coachHome", "click", openCoachCreate);
     on("modeBattle", "click", startOnlineFromMenu);
     on("modeAuction", "click", showAuction);
     on("auctionBack", "click", function () {
@@ -9318,7 +9359,6 @@ function bind() {
     on("socialPublish", "click", publishSocial);
     on("socialAd", "click", postAd);
     on("retireBtn", "click", retireCareer);
-    on("coachBtn", "click", becomeCoach);
     on("socialBack", "click", function () {
         Sfx.click();
         socialPane = "feed";
