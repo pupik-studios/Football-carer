@@ -4691,6 +4691,34 @@ function ensureFriends() {
     if (!player.socChat || typeof player.socChat !== "object" || Array.isArray(player.socChat)) player.socChat = {};
 }
 
+let clubReplyTimer = 0;
+const CLUB_REPLY_MS = 1800;
+
+function clubDesk() {
+    if (!player || !player.name || player.mode !== "club") return null;
+    ensureFinAdmin();
+    ensureFriends();
+    let index = player.socFriends.findIndex(function (row) { return row.id === "club-desk"; });
+    const row = index >= 0 ? player.socFriends[index] : { id: "club-desk", ovr: 0 };
+    row.name = player.name || t("clubDesk");
+    row.pos = t("clubDeskRole");
+    row.flag = "🏟️";
+    row.club = player.name || "";
+    if (index >= 0) player.socFriends.splice(index, 1);
+    const fin = player.socFriends.findIndex(function (item) { return item.id === "fin-admin"; });
+    player.socFriends.splice(fin >= 0 ? fin + 1 : 0, 0, row);
+    return row;
+}
+
+function queueClubReply(run) {
+    clearTimeout(clubReplyTimer);
+    clubReplyTimer = setTimeout(function () {
+        clubReplyTimer = 0;
+        if (!player || player.mode !== "club") return;
+        run();
+    }, CLUB_REPLY_MS);
+}
+
 function ensureFinAdmin() {
     if (!player || !player.name || player.mode !== "club") return null;
     ensureFriends();
@@ -5093,7 +5121,7 @@ function friendRow(who, added) {
             sendAd(who.id);
         });
         row.appendChild(btn);
-        if (who.id !== "fin-admin") row.appendChild(ad);
+        if (who.id !== "fin-admin" && who.id !== "club-desk") row.appendChild(ad);
     } else {
         btn.textContent = t("socAddFriend");
         btn.addEventListener("click", function () {
@@ -5332,6 +5360,7 @@ function talkReply(text, friend, times, before) {
     const raw = chatPlain(text).trim();
     const low = raw.toLowerCase();
     if (friend && friend.id === "fin-admin") return t("finHeard");
+    if (friend && friend.id === "club-desk") return t("clubHeard");
     const prev = chatPlain(before || "").trim().toLowerCase();
     if (isMessiFriend(friend)) {
         const asked = /калькулятор|посчитай|сколько будет|calc/.test(low);
@@ -5438,7 +5467,7 @@ function finishReply(id, uid) {
         ? finAsk(thread[i].text)
         : talkReply(thread[i].text, friend, copyCount(thread, thread[i].text, i), prev);
     const reply = { me: false, text: replyText, week: player.week || 1, live: true };
-    if (id === "fin-admin") reply.locked = true;
+    if (id === "fin-admin" || id === "club-desk") reply.locked = true;
     thread.splice(i + 1, 0, reply);
     if (thread.length > 40) thread.splice(0, thread.length - 40);
     addUnread(id);
@@ -5538,7 +5567,7 @@ function friendPing(force) {
     if (now - lastFriendPing < 1800000) return;
     if (unreadTotal() > 0) return;
     const pool = player.socFriends.filter(function (row) {
-        if (row.id === "fin-admin" || isMessiFriend(row) || chatOpen(row.id) || chatWaiting(row.id)) return false;
+        if (row.id === "fin-admin" || row.id === "club-desk" || isMessiFriend(row) || chatOpen(row.id) || chatWaiting(row.id)) return false;
         return true;
     });
     if (!pool.length) return;
@@ -5713,7 +5742,7 @@ function renderChat(feed) {
         renderSocial();
     });
     form.appendChild(input);
-    if (friend.id !== "fin-admin") form.appendChild(ad);
+    if (friend.id !== "fin-admin" && friend.id !== "club-desk") form.appendChild(ad);
     form.appendChild(wipe);
     form.addEventListener("submit", function (event) {
         event.preventDefault();
@@ -9181,23 +9210,37 @@ function chargeAsk(clubName, kind, cost, done, meta) {
                 done(false, 0);
                 return;
             }
-            const listed = Math.max(1, Math.round(cost || 0));
-            const verdict = playerBuyVerdict(listed);
-            const list = dealListName(kind, meta);
-            if (!verdict.ok) {
-                Sfx.error();
-                addLog(t("askNo_" + verdict.why, {
-                    club: ui(who || ""),
-                    pay: money(verdict.pay),
-                    list: list
-                }));
+            if (clubReplyTimer) {
+                addLog(t("askWait"));
                 done(false, 0);
                 return;
             }
-            player.respect -= verdict.pay;
-            addLog(t("askYesLook", { club: ui(who || ""), pay: money(verdict.pay), list: list }));
-            updateRespect();
-            done(true, verdict.pay);
+            const listed = Math.max(1, Math.round(cost || 0));
+            const list = dealListName(kind, meta);
+            const starId = meta && meta.id;
+            addLog(t("askSent", { club: ui(who || ""), list: list }));
+            queueClubReply(function () {
+                const room = (player.squad || []).indexOf(starId) < 0 && (player.squad || []).length < SQUAD_XI + SQUAD_BENCH;
+                const verdict = room ? playerBuyVerdict(listed) : { ok: false, why: "squad", pay: listed };
+                const desk = clubDesk();
+                if (!verdict.ok) {
+                    const text = t("askNo_" + verdict.why, {
+                        club: ui(who || ""),
+                        pay: money(verdict.pay),
+                        list: list
+                    });
+                    if (desk) dropFriendNote(desk, text);
+                    else addLog(text);
+                    Sfx.error();
+                    done(false, 0);
+                    return;
+                }
+                player.respect -= verdict.pay;
+                updateRespect();
+                done(true, verdict.pay);
+                const text = t("replyBuy", { list: list, pay: money(verdict.pay) });
+                if (desk) dropFriendNote(desk, text);
+            });
             return;
         }
         if (coach && pick === "self") {
@@ -9297,25 +9340,39 @@ function releaseStar(star) {
             addLog(t("askLogD", { club: ui(homeClubName() || "") }));
             return;
         }
-        const verdict = saleVerdict(star);
-        const index = player.squad.indexOf(star.id);
-        if (index < 0) return;
-        player.squad.splice(index, 1);
-        if (Array.isArray(player.draftBag)) {
-            player.draftBag = player.draftBag.filter(function (item) { return item.id !== star.id; });
+        if (clubReplyTimer) {
+            addLog(t("askWait"));
+            return;
         }
-        if (player.draftLast && player.draftLast.id === star.id) player.draftLast = null;
-        player.respect = (player.respect || 0) + verdict.pay;
-        const gain = Math.max(1, Math.round((star.ovr - 74) / 5));
-        starBoostKeys(star.pos).forEach((key) => {
-            if (typeof player.stats[key] === "number") {
-                player.stats[key] = Math.max(40, player.stats[key] - gain);
+        const id = star.id;
+        addLog(t("askSent", { club: ui(homeClubName() || ""), list: shown(star) }));
+        queueClubReply(function () {
+            const card = starCard(id) || star;
+            const index = (player.squad || []).indexOf(id);
+            const desk = clubDesk();
+            if (index < 0) {
+                if (desk) dropFriendNote(desk, t("askGone", { list: shown(card) }));
+                return;
             }
+            const verdict = saleVerdict(card);
+            player.squad.splice(index, 1);
+            if (Array.isArray(player.draftBag)) {
+                player.draftBag = player.draftBag.filter(function (item) { return item.id !== id; });
+            }
+            if (player.draftLast && player.draftLast.id === id) player.draftLast = null;
+            player.respect = (player.respect || 0) + verdict.pay;
+            const gain = Math.max(1, Math.round((card.ovr - 74) / 5));
+            starBoostKeys(card.pos).forEach((key) => {
+                if (typeof player.stats[key] === "number") {
+                    player.stats[key] = Math.max(40, player.stats[key] - gain);
+                }
+            });
+            addLog(t("logSold", { name: shown(card), pay: money(verdict.pay) }));
+            renderAll();
+            const text = t("replySell", { list: shown(card), pay: money(verdict.pay) });
+            if (desk) dropFriendNote(desk, text);
+            else save();
         });
-        Sfx.rest();
-        addLog(t("logSold", { name: shown(star), pay: money(verdict.pay) }));
-        renderAll();
-        save();
     }, { id: star.id, ovr: star.ovr, name: shown(star), fair: fair });
 }
 
