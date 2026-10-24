@@ -9656,7 +9656,7 @@ const BOSS_MARKET = [
 ];
 
 function hireBoss(id) {
-    if (!player || !isClub()) return;
+    if (!player || !isClub() || player.coach) return;
     if (id === "off") {
         if (!player.boss) return;
         const name = shown(player.boss);
@@ -9743,6 +9743,9 @@ function updateMarket() {
     if (posTabs) posTabs.hidden = marketFilter === "drafts" || marketFilter === "boss";
     if (!isClub()) return;
     if (!Array.isArray(player.squad)) player.squad = [];
+    const bossTab = document.querySelector("#marketTabs [data-tier='boss']");
+    if (bossTab) bossTab.hidden = !!player.coach;
+    if (player.coach && marketFilter === "boss") marketFilter = "all";
     document.querySelectorAll("#marketTabs [data-tier]").forEach((btn) => {
         btn.classList.toggle("on", btn.getAttribute("data-tier") === marketFilter);
     });
@@ -10772,6 +10775,7 @@ function bind() {
         marketTabs.addEventListener("click", function (event) {
             const btn = event.target.closest("[data-tier]");
             if (!btn) return;
+            if (player && player.coach && btn.getAttribute("data-tier") === "boss") return;
             Sfx.click();
             marketFilter = btn.getAttribute("data-tier");
             updateMarket();
