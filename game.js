@@ -645,22 +645,21 @@ function buyWear(id) {
         return;
     }
     if (!owned) {
-        if (tillShort(item.price)) {
+        if ((player.respect || 0) < item.price) {
             Sfx.error();
             addLog(t("shopNeed", { pay: money(item.price) }));
             return;
         }
-        chargeAsk(homeClubName(), "kit", item.price, function (ok) {
-            if (!ok) return;
-            if (player.closet.indexOf(id) < 0) player.closet.push(id);
-            player.wear[item.slot] = id;
-            addLog(t("shopGot", { name: shopLabel(item) }));
-            Sfx.ding();
-            paintShop();
-            updateHeader();
-            renderSocial();
-            save();
-        }, { id: "kit", name: shopLabel(item) });
+        player.respect -= item.price;
+        if (player.closet.indexOf(id) < 0) player.closet.push(id);
+        player.wear[item.slot] = id;
+        addLog(t("shopGot", { name: shopLabel(item) }));
+        Sfx.ding();
+        updateRespect();
+        paintShop();
+        updateHeader();
+        renderSocial();
+        save();
         return;
     }
     player.wear[item.slot] = id;
@@ -3933,13 +3932,15 @@ function updateScheduleUI() {
                 ? (player.energy < MATCH_COST ? t("energyShort") : t("matchShort"))
                 : "📅 " + wait + t("wk"));
     }
-    const bribeBtn = get("bribeBtn");
+    const bribeBtns = [get("bribeBtn"), get("bribeMatch")];
     const fee = bribeCost();
     const pocket = (player.stolen || 0);
     const fromPocket = !!(player.coach) && pocket >= fee;
     const purse = fromPocket ? pocket : (player.respect || 0);
     const canBribe = canPlay && purse >= fee;
-    if (bribeBtn) {
+    bribeBtns.forEach(function (bribeBtn) {
+        if (!bribeBtn) return;
+        bribeBtn.hidden = bribeBtn.id === "bribeMatch" && !(player && player.coach);
         bribeBtn.disabled = !canBribe;
         bribeBtn.textContent = !due
             ? t("bribeWait")
@@ -3950,7 +3951,7 @@ function updateScheduleUI() {
                     : (fromPocket
                         ? t("bribeStolen", { pay: money(fee), bag: money(pocket) })
                         : t("bribe") + " · " + money(fee) + " · " + t("bribeFine"))));
-    }
+    });
     updateGridUI();
     updatePlanUI();
 }
@@ -6051,11 +6052,7 @@ function retireCareer() {
 }
 
 function openCoachCreate() {
-    if (!player || !player.name) {
-        Sfx.error();
-        alert(t("coachNeed"));
-        return;
-    }
+    Sfx.unlock();
     selectMode("coach");
 }
 
@@ -6109,11 +6106,7 @@ function paintCoachOffers() {
 }
 
 function startCoachCareer(clubName) {
-    if (!player || !player.name) {
-        Sfx.error();
-        alert(t("coachNeed"));
-        return;
-    }
+    if (!player) player = newPlayer("");
     const club = CLUBS.find(function (row) { return row.name === clubName; }) || coachOfferList().slice(-1)[0];
     if (!club) return;
     const league = leagueForHire(club);
@@ -6143,11 +6136,13 @@ function startCoachCareer(clubName) {
         save();
         return;
     }
-    if (!player.retired && !confirm(t("retireAsk"))) return;
+    const fresh = !player.name;
+    if (fresh) player.name = t("coachBlank");
+    if (!fresh && !player.retired && !confirm(t("retireAsk"))) return;
     const from = player.name;
     if (!player.retired) {
         player.retired = true;
-        addTitle("retired", seasonYear(), "");
+        if (!fresh) addTitle("retired", seasonYear(), "");
     }
     const next = newClub(club.name, club.city, player.nation, "🏟️");
     next.club = league.name;
@@ -9374,21 +9369,21 @@ function signStar(star) {
     chargeAsk(star.club || homeClubName(), "player", cost, function (ok, pay) {
         if (!ok) return;
         if (player.squad.indexOf(star.id) >= 0) return;
-        player.squad.push(star.id);
-        const gain = Math.max(1, Math.round((star.ovr - 74) / 5));
-        starBoostKeys(star.pos).forEach((key) => {
-            if (typeof player.stats[key] === "number") {
-                player.stats[key] = Math.min(99, player.stats[key] + gain);
-            }
-        });
-        Sfx.transferBig(star.ovr);
+    player.squad.push(star.id);
+    const gain = Math.max(1, Math.round((star.ovr - 74) / 5));
+    starBoostKeys(star.pos).forEach((key) => {
+        if (typeof player.stats[key] === "number") {
+            player.stats[key] = Math.min(99, player.stats[key] + gain);
+        }
+    });
+    Sfx.transferBig(star.ovr);
         addLog(t("logBought", { flag: star.flag, name: shown(star), pos: star.pos, ovr: star.ovr, pay: money(pay) }));
         if (lineupOf(squadStars()).bench.some(function (row) { return row.id === star.id; })) {
             addLog(t("logBench", { name: shown(star), ovr: star.ovr }));
         }
         showAura("transfer", "−" + money(pay), shown(star), ui(star.club) + " · " + star.pos + " " + star.ovr, "#ffd83d", 1800);
-        renderAll();
-        save();
+    renderAll();
+    save();
     }, { id: star.id, ovr: star.ovr, name: shown(star) });
 }
 
@@ -9419,7 +9414,7 @@ function releaseStar(star) {
                 return;
             }
             const verdict = saleVerdict(card);
-            player.squad.splice(index, 1);
+    player.squad.splice(index, 1);
             if (Array.isArray(player.draftBag)) {
                 player.draftBag = player.draftBag.filter(function (item) { return item.id !== id; });
             }
@@ -9427,12 +9422,12 @@ function releaseStar(star) {
             player.respect = (player.respect || 0) + verdict.pay;
             const gain = Math.max(1, Math.round((card.ovr - 74) / 5));
             starBoostKeys(card.pos).forEach((key) => {
-                if (typeof player.stats[key] === "number") {
-                    player.stats[key] = Math.max(40, player.stats[key] - gain);
-                }
-            });
+        if (typeof player.stats[key] === "number") {
+            player.stats[key] = Math.max(40, player.stats[key] - gain);
+        }
+    });
             addLog(t("logSold", { name: shown(card), pay: money(verdict.pay) }));
-            renderAll();
+    renderAll();
             const text = t("replySell", { list: shown(card), pay: money(verdict.pay) });
             if (desk) dropFriendNote(desk, text);
             else save();
@@ -9648,13 +9643,13 @@ function updateSquad() {
         cell.className = "pitch-slot" + (slot.star ? " filled" : "") + (slot.star && slot.star.exclusive ? " exclusive" : "");
         if (slot.star) {
             cell.setAttribute("data-role", slot.star.id);
-            const name = document.createElement("b");
+                const name = document.createElement("b");
             name.textContent = (slot.star.flag ? slot.star.flag + " " : "") + (shown(slot.star) || slot.star.name || "");
             cell.appendChild(name);
-            const meta = document.createElement("small");
+                const meta = document.createElement("small");
             meta.textContent = (slot.star.pos || "") + " " + (slot.star.ovr || "");
             cell.appendChild(meta);
-        } else {
+            } else {
             cell.textContent = slot.pos;
         }
         line.appendChild(cell);
@@ -10722,6 +10717,7 @@ function bind() {
     const buyoutBtn = get("buyoutBtn");
     if (buyoutBtn) buyoutBtn.addEventListener("click", buyoutTeam);
     get("bribeBtn").addEventListener("click", function () { playMatch(true); });
+    if (get("bribeMatch")) get("bribeMatch").addEventListener("click", function () { playMatch(true); });
     get("onlineBtn").addEventListener("click", openOnlineLobby);
     get("newCareerBtn").addEventListener("click", newCareer);
     const sponsorList = get("sponsorList");
