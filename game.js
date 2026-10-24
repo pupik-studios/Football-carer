@@ -9085,8 +9085,10 @@ function saleVerdict(star) {
     return { ok: true, why: "deal", pay: starCost(star.ovr, star) };
 }
 
-function playerBuyVerdict(pay) {
+function playerBuyVerdict(pay, meta) {
     pay = Math.max(1, Math.round(pay || 0));
+    const ovr = meta && meta.ovr || 0;
+    if (ovr >= 93 && ovr > clubPop() + 12) return { ok: false, why: "fit", pay: pay };
     if ((player.respect || 0) < pay) return { ok: false, why: "cash", pay: pay };
     if (pay > clubBudget()) return { ok: false, why: "fame", pay: pay };
     return { ok: true, why: "deal", pay: pay };
@@ -9222,7 +9224,7 @@ function chargeAsk(clubName, kind, cost, done, meta) {
             addLog(t("askSent", { club: ui(who || ""), list: list }));
             queueClubReply(function () {
                 const room = (player.squad || []).indexOf(starId) < 0 && (player.squad || []).length < SQUAD_XI + SQUAD_BENCH;
-                const verdict = room ? playerBuyVerdict(listed) : { ok: false, why: "squad", pay: listed };
+                const verdict = room ? playerBuyVerdict(listed, meta) : { ok: false, why: "squad", pay: listed };
                 const desk = clubDesk();
                 if (!verdict.ok) {
                     const text = t("askNo_" + verdict.why, {
