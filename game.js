@@ -5788,11 +5788,6 @@ function openCoachCreate() {
         alert(t("coachNeed"));
         return;
     }
-    if (isClub()) {
-        Sfx.error();
-        alert(t("coachHave"));
-        return;
-    }
     selectMode("coach");
 }
 
@@ -5850,21 +5845,35 @@ function startCoachCareer(clubName) {
         alert(t("coachNeed"));
         return;
     }
-    if (isClub()) {
-        Sfx.error();
-        alert(t("coachHave"));
-        return;
-    }
     const club = CLUBS.find(function (row) { return row.name === clubName; }) || coachOfferList().slice(-1)[0];
     if (!club) return;
+    const league = leagueForHire(club);
+    const pay = coachWage(club);
+    if (isClub()) {
+        if (!confirm(t("coachKeep", { name: ui(club.name) }))) return;
+        const from = player.coachFrom || player.name;
+        player.name = club.name;
+        player.city = club.city;
+        player.color = club.color;
+        player.accent = club.accent;
+        player.club = league.name;
+        player.coach = true;
+        player.coachFrom = from;
+        player.coachWage = pay;
+        player.retired = false;
+        player.grid = [];
+        Sfx.start();
+        showCareer();
+        addLog(t("logCoach", { name: ui(club.name), from: from, pay: money(pay) }));
+        save();
+        return;
+    }
     if (!player.retired && !confirm(t("retireAsk"))) return;
     const from = player.name;
     if (!player.retired) {
         player.retired = true;
         addTitle("retired", seasonYear(), "");
     }
-    const league = leagueForHire(club);
-    const pay = coachWage(club);
     const next = newClub(club.name, club.city, player.nation, "🏟️");
     next.club = league.name;
     next.color = club.color;
@@ -6905,6 +6914,17 @@ function advanceWeek() {
     if (player.coach && player.coachWage) {
         player.respect = (player.respect || 0) + player.coachWage;
         addLog(t("logCoachPay", { n: money(player.coachWage) }));
+    }
+    if (player.boss && player.boss.wage) {
+        const wage = player.boss.wage;
+        const name = shown(player.boss);
+        if ((player.respect || 0) < wage) {
+            player.boss = null;
+            addLog(t("bossFired", { name: name }));
+        } else {
+            player.respect -= wage;
+            addLog(t("bossPay", { name: name, n: money(wage) }));
+        }
     }
     clearInjuryIfHealed();
     friendPing(true);
@@ -8022,6 +8042,9 @@ function playMatch(useBribe) {
             const depth = Math.min(SQUAD_BENCH, xi.bench.length) * 0.02;
             squadBoost = ((avg - 76) / 28) * (starters.length / SQUAD_XI) + depth;
         }
+        if (player.boss && player.boss.ovr) {
+            squadBoost += clamp((player.boss.ovr - 74) / 90, 0, 0.2);
+        }
     } else if (ownsClub(player.club)) {
         const mates = matesForClub(player.club);
         if (mates.length) {
@@ -8923,13 +8946,104 @@ function paintAcademyChoice(box) {
     });
 }
 
+const BOSS_MARKET = [
+    { id: "boss-baba", name: "Бабаян", en: "Babayan", flag: "🇰🇿", club: "Кайрат", ovr: 68, cost: 280, wage: 35 },
+    { id: "boss-karp", name: "Карпин", en: "Karpin", flag: "🇷🇺", club: "Ростов", ovr: 74, cost: 480, wage: 55 },
+    { id: "boss-cherch", name: "Черчесов", en: "Cherchesov", flag: "🇷🇺", club: "Динамо Москва", ovr: 76, cost: 560, wage: 60 },
+    { id: "boss-klopp", name: "Клопп", en: "Klopp", flag: "🇩🇪", club: "Borussia Dortmund", ovr: 86, cost: 1500, wage: 130 },
+    { id: "boss-mourinho", name: "Моуринью", en: "Mourinho", flag: "🇵🇹", club: "Porto", ovr: 87, cost: 1600, wage: 150 },
+    { id: "boss-simeone", name: "Симеоне", en: "Simeone", flag: "🇦🇷", club: "Atlético Madrid", ovr: 88, cost: 1700, wage: 140 },
+    { id: "boss-alonso", name: "Хаби Алонсо", en: "Xabi Alonso", flag: "🇪🇸", club: "Real Madrid", ovr: 84, cost: 1200, wage: 110 },
+    { id: "boss-carlo", name: "Анчелотти", en: "Ancelotti", flag: "🇮🇹", club: "Real Madrid", ovr: 91, cost: 2400, wage: 190 },
+    { id: "boss-pep", name: "Гвардиола", en: "Guardiola", flag: "🇪🇸", club: "Manchester City", ovr: 93, cost: 2800, wage: 210 }
+];
+
+function hireBoss(id) {
+    if (!player || !isClub()) return;
+    if (id === "off") {
+        if (!player.boss) return;
+        const name = shown(player.boss);
+        player.boss = null;
+        addLog(t("bossLeft", { name: name }));
+        Sfx.click();
+        updateMarket();
+        save();
+        return;
+    }
+    const boss = BOSS_MARKET.find(function (row) { return row.id === id; });
+    if (!boss || (player.boss && player.boss.id === boss.id)) return;
+    if ((player.respect || 0) < boss.cost) {
+        Sfx.error();
+        addLog(t("bossNeed", { name: shown(boss), pay: money(boss.cost) }));
+        return;
+    }
+    chargeAsk(boss.club, "player", boss.cost, function (ok) {
+        if (!ok) return;
+        player.boss = {
+            id: boss.id,
+            name: boss.name,
+            en: boss.en,
+            flag: boss.flag,
+            club: boss.club,
+            ovr: boss.ovr,
+            wage: boss.wage
+        };
+        addLog(t("bossGot", { name: shown(player.boss), pay: money(boss.wage) }));
+        Sfx.transferBig(boss.ovr);
+        updateMarket();
+        save();
+    });
+}
+
+function paintBossMarket(box) {
+    if (player.boss) {
+        const fire = document.createElement("button");
+        fire.type = "button";
+        fire.setAttribute("data-boss", "off");
+        fire.textContent = t("bossFire");
+        box.appendChild(fire);
+    }
+    BOSS_MARKET.forEach(function (boss) {
+        const mine = player.boss && player.boss.id === boss.id;
+        const row = document.createElement("div");
+        row.className = "market-row" + (mine ? " owned" : (player.respect || 0) < boss.cost ? " locked" : "");
+        const pos = document.createElement("span");
+        pos.className = "pos";
+        pos.textContent = String(boss.ovr);
+        row.appendChild(pos);
+        const who = document.createElement("span");
+        who.className = "who";
+        who.textContent = boss.flag + " " + shown(boss) + " ";
+        const club = document.createElement("small");
+        club.textContent = ui(boss.club) + " · " + money(boss.wage) + "/" + (langEn() ? "wk" : "нед");
+        who.appendChild(club);
+        row.appendChild(who);
+        if (mine) {
+            const mark = document.createElement("b");
+            mark.textContent = t("bossHave");
+            row.appendChild(mark);
+        } else if ((player.respect || 0) >= boss.cost) {
+            const button = document.createElement("button");
+            button.type = "button";
+            button.setAttribute("data-boss", boss.id);
+            button.textContent = money(boss.cost);
+            row.appendChild(button);
+        } else {
+            const mark = document.createElement("b");
+            mark.textContent = money(boss.cost);
+            row.appendChild(mark);
+        }
+        box.appendChild(row);
+    });
+}
+
 function updateMarket() {
     const box = get("market");
     const hint = get("marketHint");
     const posTabs = get("marketPos");
     if (!box) return;
     box.innerHTML = "";
-    if (posTabs) posTabs.hidden = marketFilter === "drafts";
+    if (posTabs) posTabs.hidden = marketFilter === "drafts" || marketFilter === "boss";
     if (!isClub()) return;
     if (!Array.isArray(player.squad)) player.squad = [];
     document.querySelectorAll("#marketTabs [data-tier]").forEach((btn) => {
@@ -8966,6 +9080,15 @@ function updateMarket() {
         open.textContent = t("draftOpen");
         open.addEventListener("click", function () { Sfx.click(); openDraft(); });
         box.appendChild(open);
+        return;
+    }
+    if (marketFilter === "boss") {
+        if (hint) {
+            hint.textContent = player.boss
+                ? t("bossHint", { name: shown(player.boss), pay: money(player.boss.wage || 0) })
+                : t("bossNone");
+        }
+        paintBossMarket(box);
         return;
     }
     ensureAcademy();
@@ -9954,6 +10077,12 @@ function bind() {
             if (academyBtn) {
                 Sfx.click();
                 openAcademy(academyBtn.getAttribute("data-academy"));
+                return;
+            }
+            const bossBtn = event.target.closest("[data-boss]");
+            if (bossBtn) {
+                Sfx.click();
+                hireBoss(bossBtn.getAttribute("data-boss"));
                 return;
             }
             const btn = event.target.closest("[data-star]");
