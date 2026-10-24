@@ -4087,6 +4087,12 @@ function updateHeader() {
     if (get("weekLine")) get("weekLine").hidden = !clubMode;
     const shopTab = document.querySelector('#careerTabs [data-panel="shop"]');
     if (shopTab) shopTab.hidden = clubMode;
+    const stadTab = document.querySelector('#careerTabs [data-panel="stad"]');
+    if (stadTab) stadTab.hidden = !clubMode;
+    if (!clubMode) {
+        const on = document.querySelector(".panel.on");
+        if (on && on.getAttribute("data-panel") === "stad") showPanel("home");
+    }
     const aucCard = get("auctionCareerCard");
     if (aucCard) aucCard.hidden = !clubMode;
     setFace(get("avatar"), clubMode ? player.name : (player.avatar || "p0"), clubMode, clubMode ? null : wearLook());
@@ -6077,6 +6083,7 @@ function showCareer() {
 
 function showPanel(id) {
     if (id === "shop" && isClub()) id = "club";
+    if (id === "stad" && player && player.name && !isClub()) id = "home";
     document.querySelectorAll(".panel").forEach(function (panel) {
         panel.classList.toggle("on", panel.getAttribute("data-panel") === id);
     });
@@ -6112,7 +6119,8 @@ function gearLeft() {
 }
 
 function gearDue() {
-    return !!player && !!player.name && gearLeft() <= 0;
+    if (!player || !player.name || !isClub()) return false;
+    return gearLeft() <= 0;
 }
 
 function gearCost() {
@@ -6203,7 +6211,7 @@ const YARD_UPS = [
 ];
 
 function propsDue() {
-    if (!player || !player.name) return false;
+    if (!player || !player.name || !isClub()) return false;
     ensureYard();
     return YARD_PROPS.some(function (row) { return !player.yard.props[row.id]; });
 }
@@ -6359,6 +6367,7 @@ function upgradeStadium() {
 }
 
 function takeStadiumGate(result) {
+    if (!isClub()) return null;
     ensureStadium();
     const row = STADIUM[player.stadium.level];
     const fill = result === "win" ? 0.92 : result === "draw" ? 0.74 : 0.58;
