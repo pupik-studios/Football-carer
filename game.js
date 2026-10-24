@@ -4584,6 +4584,20 @@ function ensureFriends() {
     if (!player.socChat || typeof player.socChat !== "object" || Array.isArray(player.socChat)) player.socChat = {};
 }
 
+function ensureFinAdmin() {
+    if (!player || !player.name || player.mode !== "club") return null;
+    ensureFriends();
+    let index = player.socFriends.findIndex(function (row) { return row.id === "fin-admin"; });
+    const row = index >= 0 ? player.socFriends[index] : { id: "fin-admin", ovr: 0 };
+    row.name = t("finName");
+    row.pos = t("finRole");
+    row.flag = "💼";
+    row.club = player.name || "";
+    if (index > 0) player.socFriends.splice(index, 1);
+    if (index !== 0) player.socFriends.unshift(row);
+    return row;
+}
+
 function isFriend(id) {
     ensureFriends();
     return player.socFriends.some(function (row) { return row.id === id; });
@@ -4972,7 +4986,7 @@ function friendRow(who, added) {
             sendAd(who.id);
         });
         row.appendChild(btn);
-        row.appendChild(ad);
+        if (who.id !== "fin-admin") row.appendChild(ad);
     } else {
         btn.textContent = t("socAddFriend");
         btn.addEventListener("click", function () {
@@ -5058,6 +5072,7 @@ function renderSubs(feed) {
 
 function renderFriends(feed) {
     ensureFriends();
+    ensureFinAdmin();
     const mine = player.club || "";
     const head = document.createElement("p");
     head.className = "hint";
@@ -5175,9 +5190,42 @@ function cr7Math(raw) {
     }
 }
 
+function finYear() {
+    return Math.floor(Math.max(0, (player.week || 1) - 1) / YEAR_WEEKS);
+}
+
+function finCap() {
+    const pop = clubPop();
+    if (pop >= 78) return 900;
+    if (pop >= 52) return 420;
+    return 180;
+}
+
+function finAsk(raw) {
+    if (!player || player.mode !== "club") return t("finNo");
+    const text = chatPlain(raw).toLowerCase();
+    const nums = text.match(/\d+/g);
+    const pay = nums ? Math.round(Number(nums[nums.length - 1])) : 0;
+    if (!pay || pay < 1) return t("finNeedSum");
+    if (pay > 999999) return t("finTight", { left: money(0) });
+    const year = finYear();
+    if (player.finYear !== year) {
+        player.finYear = year;
+        player.finOut = 0;
+    }
+    const left = Math.max(0, finCap() - (player.finOut || 0));
+    if (pay > left) return t("finTight", { left: money(left) });
+    player.finOut = (player.finOut || 0) + pay;
+    player.respect = (player.respect || 0) + pay;
+    updateRespect();
+    save();
+    return t("finYes", { pay: money(pay), left: money(Math.max(0, finCap() - player.finOut)) });
+}
+
 function talkReply(text, friend, times, before) {
     const raw = chatPlain(text).trim();
     const low = raw.toLowerCase();
+    if (friend && friend.id === "fin-admin") return t("finHeard");
     const prev = chatPlain(before || "").trim().toLowerCase();
     if (isMessiFriend(friend)) {
         const asked = /калькулятор|посчитай|сколько будет|calc/.test(low);
@@ -5280,8 +5328,12 @@ function finishReply(id, uid) {
     thread[i].answered = true;
     const friend = liveFriend((player.socFriends || []).find(function (row) { return row.id === id; }));
     const prev = i > 0 && !thread[i - 1].me ? thread[i - 1].text : "";
-    const replyText = talkReply(thread[i].text, friend, copyCount(thread, thread[i].text, i), prev);
-    thread.splice(i + 1, 0, { me: false, text: replyText, week: player.week || 1, live: true });
+    const replyText = id === "fin-admin"
+        ? finAsk(thread[i].text)
+        : talkReply(thread[i].text, friend, copyCount(thread, thread[i].text, i), prev);
+    const reply = { me: false, text: replyText, week: player.week || 1, live: true };
+    if (id === "fin-admin") reply.locked = true;
+    thread.splice(i + 1, 0, reply);
     if (thread.length > 40) thread.splice(0, thread.length - 40);
     addUnread(id);
     save();
@@ -5380,7 +5432,7 @@ function friendPing(force) {
     if (now - lastFriendPing < 600000) return;
     if (unreadTotal() > 0) return;
     const pool = player.socFriends.filter(function (row) {
-        if (isMessiFriend(row) || chatOpen(row.id) || chatWaiting(row.id)) return false;
+        if (row.id === "fin-admin" || isMessiFriend(row) || chatOpen(row.id) || chatWaiting(row.id)) return false;
         return true;
     });
     if (!pool.length) return;
@@ -5497,7 +5549,8 @@ function renderChat(feed) {
         const src = notes[i - 1];
         const earlier = i >= 2 ? notes[i - 2] : null;
         const ctx = earlier && !earlier.me ? earlier.text : "";
-        fillBubble(bubble, (!note.me && !note.ping && src && src.me) ? talkReply(src.text, friend, copyCount(notes, src.text, i - 1), ctx) : chatPlain(note.text));
+        const regen = !note.me && !note.ping && !note.locked && src && src.me;
+        fillBubble(bubble, regen ? talkReply(src.text, friend, copyCount(notes, src.text, i - 1), ctx) : chatPlain(note.text));
         log.appendChild(bubble);
     });
     let waiting = false;
@@ -5538,7 +5591,7 @@ function renderChat(feed) {
         renderSocial();
     });
     form.appendChild(input);
-    form.appendChild(ad);
+    if (friend.id !== "fin-admin") form.appendChild(ad);
     form.appendChild(wipe);
     form.addEventListener("submit", function (event) {
         event.preventDefault();
@@ -5550,6 +5603,7 @@ function renderChat(feed) {
 function renderSocial() {
     const box = get("socialOverlay");
     if (!box || box.hidden || !player || !player.name) return;
+    if (player.mode === "club") ensureFinAdmin();
     const clubMode = isClub();
     if (get("socialKind")) get("socialKind").textContent = t(clubMode ? "socClub" : "socPlayer");
     setFace(get("socialAva"), clubMode ? player.name : (player.avatar || "p0"), clubMode, clubMode ? null : wearLook());
@@ -6988,7 +7042,10 @@ function advanceWeek() {
     }
     clearInjuryIfHealed();
     friendPing(true);
-    if (player.week > 1 && (player.week - 1) % YEAR_WEEKS === 0) bankSeason();
+    if (player.week > 1 && (player.week - 1) % YEAR_WEEKS === 0) {
+        bankSeason();
+        if (player.mode === "club") auditYear();
+    }
 }
 
 function needEnergy(cost) {
@@ -8630,6 +8687,35 @@ function catchThief() {
     return true;
 }
 
+function auditYear() {
+    if (!player || player.mode !== "club") return;
+    const who = ensureFinAdmin();
+    const skimmed = player.skimmed || 0;
+    if (skimmed >= skimLimit()) {
+        if (player.coach) catchThief();
+        else {
+            const fine = Math.max(80, Math.round(skimmed * 0.65));
+            const drop = Math.min(28, 12 + Math.round(skimmed / 80));
+            player.respect = Math.max(0, (player.respect || 0) - fine);
+            addFame(-drop);
+            player.stolen = 0;
+            addLog(t("logThief", { club: ui(player.name || ""), pay: money(fine), fame: drop }));
+            Sfx.error();
+            updateFame();
+        }
+        player.skimmed = 0;
+        player.finOut = 0;
+        player.finYear = finYear();
+        if (who) dropFriendNote(who, t("finAuditBad", { pay: money(skimmed) }));
+        return;
+    }
+    const note = skimmed ? t("finAuditOk", { pay: money(skimmed) }) : t("finAuditClean");
+    player.skimmed = 0;
+    player.finOut = 0;
+    player.finYear = finYear();
+    if (who) dropFriendNote(who, note);
+}
+
 function coachVerdict(pay, kind, meta) {
     pay = Math.round(Number(pay));
     if (!isFinite(pay) || pay < 1) return { ok: false, why: "sum", pay: 0 };
@@ -8758,7 +8844,6 @@ function chargeAsk(clubName, kind, cost, done, meta) {
             const skim = pocketSkim(verdict.pay, cost);
             addLog(t("askYesDeal", { club: ui(who || ""), pay: money(verdict.pay), list: list }));
             if (skim) addLog(t("logSkim", { pay: money(skim), bag: money(player.stolen || 0) }));
-            catchThief();
             updateRespect();
             done(true, verdict.pay);
             return;
