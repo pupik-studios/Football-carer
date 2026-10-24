@@ -1140,6 +1140,46 @@ function newClub(name, city, nation, avatar) {
     };
 }
 
+const START_XI = [
+    { id: "xi-gk", name: "Арсен", en: "Arsen", pos: "GK", ovr: 58 },
+    { id: "xi-lb", name: "Бекзат", en: "Bekzat", pos: "LB", ovr: 57 },
+    { id: "xi-cb1", name: "Дамир", en: "Damir", pos: "CB", ovr: 60 },
+    { id: "xi-cb2", name: "Ермек", en: "Ermek", pos: "CB", ovr: 59 },
+    { id: "xi-rb", name: "Жанибек", en: "Zhanibek", pos: "RB", ovr: 57 },
+    { id: "xi-cdm", name: "Ильяс", en: "Ilyas", pos: "CDM", ovr: 58 },
+    { id: "xi-cm", name: "Канат", en: "Kanat", pos: "CM", ovr: 60 },
+    { id: "xi-cam", name: "Марат", en: "Marat", pos: "CAM", ovr: 61 },
+    { id: "xi-lw", name: "Нурлан", en: "Nurlan", pos: "LW", ovr: 62 },
+    { id: "xi-st", name: "Олжас", en: "Olzhas", pos: "ST", ovr: 63 },
+    { id: "xi-rw", name: "Рустем", en: "Rustem", pos: "RW", ovr: 61 }
+];
+
+function ensureStartSquad() {
+    if (!player || !player.name || player.mode !== "club") return;
+    if (player.squadSeeded) return;
+    if (!Array.isArray(player.squad)) player.squad = [];
+    if (player.squad.length) {
+        player.squadSeeded = true;
+        return;
+    }
+    const nat = nationById(player.nation);
+    player.startXI = START_XI.map(function (row) {
+        return {
+            id: row.id,
+            name: row.name,
+            en: row.en,
+            pos: row.pos,
+            ovr: row.ovr,
+            flag: nat.flag,
+            club: player.name
+        };
+    });
+    player.squad = player.startXI.map(function (row) { return row.id; });
+    player.squadSeeded = true;
+    addLog(t("logStartXI", { n: player.squad.length }));
+    save();
+}
+
 function isClub() {
     return player.mode === "club";
 }
@@ -2856,7 +2896,10 @@ function wcById(id) {
 }
 
 function starCard(id) {
-    return exclusiveById(id) || TRANSFER_STARS.find(function (star) { return star.id === id; }) || everyStar().find(function (star) { return star.id === id; }) || wcById(id) || null;
+    const home = player && Array.isArray(player.startXI)
+        ? player.startXI.find(function (star) { return star.id === id; })
+        : null;
+    return home || exclusiveById(id) || TRANSFER_STARS.find(function (star) { return star.id === id; }) || everyStar().find(function (star) { return star.id === id; }) || wcById(id) || null;
 }
 
 function futTier(star) {
@@ -6091,6 +6134,7 @@ function openSocial() {
 }
 
 function renderAll() {
+    ensureStartSquad();
     updateHeader();
     updateStats();
     updateOverall();
