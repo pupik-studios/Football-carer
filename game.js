@@ -1417,8 +1417,8 @@ function money(n) {
         return sign + "$" + text + (en ? "m" : " млн");
     }
     if (v >= 1000) {
-        const k = v / 1000;
-        const text = k >= 100 ? String(Math.round(k)) : String(Math.round(k * 10) / 10);
+        const k = Math.floor(v / 100) / 10;
+        const text = String(k).replace(/\.0$/, "");
         return sign + "$" + text + (en ? "k" : " тыс");
     }
     return sign + "$" + v;
@@ -1766,7 +1766,9 @@ function clearInjuryIfHealed() {
 
 function scaledPrice(base, rate) {
     const cash = (player && player.respect) || 0;
-    return Math.round(base + Math.min(cash * rate, base * 6));
+    let price = Math.round(base + Math.min(cash * rate, base * 6));
+    if (cash >= base && price > cash) price = cash;
+    return price;
 }
 
 function treatCost() {
@@ -3933,8 +3935,9 @@ function updateScheduleUI() {
     }
     const bribeBtn = get("bribeBtn");
     const fee = bribeCost();
-    const dirty = !!(player.coach);
-    const purse = dirty ? (player.stolen || 0) : (player.respect || 0);
+    const pocket = (player.stolen || 0);
+    const fromPocket = !!(player.coach) && pocket >= fee;
+    const purse = fromPocket ? pocket : (player.respect || 0);
     const canBribe = canPlay && purse >= fee;
     if (bribeBtn) {
         bribeBtn.disabled = !canBribe;
@@ -3943,9 +3946,9 @@ function updateScheduleUI() {
             : (player.energy < MATCH_COST
                 ? t("lowEnergy")
                 : (purse < fee
-                    ? (dirty ? t("bribeStolenNeed", { pay: money(fee), bag: money(player.stolen || 0) }) : t("need") + " " + money(fee))
-                    : (dirty
-                        ? t("bribeStolen", { pay: money(fee), bag: money(player.stolen || 0) })
+                    ? (player.coach ? t("bribeStolenNeed", { pay: money(fee), bag: money(purse) }) : t("need") + " " + money(fee))
+                    : (fromPocket
+                        ? t("bribeStolen", { pay: money(fee), bag: money(pocket) })
                         : t("bribe") + " · " + money(fee) + " · " + t("bribeFine"))));
     }
     updateGridUI();
@@ -5335,11 +5338,23 @@ function finCap() {
     return Math.max(1500000, cap);
 }
 
+function readMoney(raw) {
+    const s = String(raw == null ? "" : raw).toLowerCase().replace(/,/g, ".").trim();
+    const word = s.match(/(\d+(?:[.\s]\d+)*)\s*(млн|миллион(?:а|ов)?|m|тыс(?:яч(?:и|а)?)?|k)(?![a-zа-яё])/);
+    if (word) {
+        const n = Number(String(word[1]).replace(/\s/g, ""));
+        if (!isFinite(n)) return 0;
+        if (/млн|миллион|^m$/.test(word[2])) return Math.round(n * 1000000);
+        return Math.round(n * 1000);
+    }
+    const digits = s.replace(/[^\d]/g, "");
+    if (!digits) return 0;
+    return Math.round(Number(digits));
+}
+
 function finAsk(raw) {
     if (!player || player.mode !== "club") return t("finNo");
-    const text = chatPlain(raw).toLowerCase();
-    const nums = text.match(/\d+/g);
-    const pay = nums ? Math.round(Number(nums[nums.length - 1])) : 0;
+    const pay = readMoney(chatPlain(raw));
     if (!pay || pay < 1) return t("finNeedSum");
     if (pay > 500000000) return t("finTight", { left: money(0) });
     const year = finYear();
@@ -8434,14 +8449,15 @@ function playMatch(useBribe) {
     let bribeFined = false;
     if (useBribe) {
         const fee = bribeCost();
-        const dirty = !!player.coach;
-        const purse = dirty ? (player.stolen || 0) : (player.respect || 0);
+        const pocket = player.stolen || 0;
+        const fromPocket = !!player.coach && pocket >= fee;
+        const purse = fromPocket ? pocket : (player.respect || 0);
         if (purse < fee) {
             Sfx.error();
-            addLog(t(dirty ? "logBribeStolen" : "logBribeNeed", { pay: money(fee) }));
+            addLog(t(player.coach ? "logBribeStolen" : "logBribeNeed", { pay: money(fee) }));
             return;
         }
-        if (dirty) player.stolen = purse - fee;
+        if (fromPocket) player.stolen = pocket - fee;
         else player.respect -= fee;
         if (Math.random() < clamp(BRIBE_CATCH + (50 - fameValue()) / 250, 0.58, 0.82)) {
             bribeFined = true;
@@ -9105,7 +9121,7 @@ function clubBudget() {
 }
 
 function coachVerdict(pay, kind, meta) {
-    pay = Math.round(Number(pay));
+    pay = readMoney(pay);
     if (!isFinite(pay) || pay < 1) return { ok: false, why: "sum", pay: 0 };
     if (pay > 500000000) pay = 500000000;
     const cash = player.respect || 0;
@@ -9193,6 +9209,7 @@ function openClubAsk(clubName, kind, done, meta) {
             input.inputMode = "numeric";
             input.min = "1";
             input.placeholder = t("askSumPh");
+            if (meta && meta.fair) input.value = String(Math.round(meta.fair));
             input.addEventListener("keydown", function (event) {
                 if (event.key !== "Enter") return;
                 event.preventDefault();
@@ -9261,7 +9278,8 @@ function chargeAsk(clubName, kind, cost, done, meta) {
             addLog(t("askSent", { club: ui(who || ""), list: list }));
             queueClubReply(function () {
                 const room = (player.squad || []).indexOf(starId) < 0 && (player.squad || []).length < SQUAD_XI + SQUAD_BENCH;
-                const verdict = room ? playerBuyVerdict(listed, meta) : { ok: false, why: "squad", pay: listed };
+                let verdict = room ? playerBuyVerdict(listed, meta) : { ok: false, why: "squad", pay: listed };
+                if (!verdict.ok && verdict.why === "cash" && (player.respect || 0) >= listed) verdict = { ok: true, why: "deal", pay: listed };
                 const desk = clubDesk();
                 if (!verdict.ok) {
                     const text = t("askNo_" + verdict.why, {
@@ -9299,7 +9317,9 @@ function chargeAsk(clubName, kind, cost, done, meta) {
             return;
         }
         if (coach) {
-            const verdict = coachVerdict(sum, kind, dealMeta);
+            const listPrice = Math.max(1, Math.round(cost || 0));
+            let verdict = coachVerdict(sum, kind, dealMeta);
+            if (!verdict.ok && (player.respect || 0) >= listPrice) verdict = { ok: true, why: "deal", pay: listPrice };
             const list = dealListName(kind, meta);
             if (!verdict.ok) {
                 Sfx.error();
@@ -9319,7 +9339,9 @@ function chargeAsk(clubName, kind, cost, done, meta) {
             done(true, verdict.pay);
             return;
         }
-        const verdict = clubVerdict(cost, pick === "cheap" ? "cheap" : "rich");
+        const listPrice = Math.max(1, Math.round(cost || 0));
+        let verdict = clubVerdict(cost, pick === "cheap" ? "cheap" : "rich");
+        if (!verdict.ok && (player.respect || 0) >= listPrice) verdict = { ok: true, why: "deal", pay: listPrice };
         if (!verdict.ok) {
             Sfx.error();
             addLog(t("askNo_" + verdict.why, { club: ui(who || ""), pay: money(verdict.pay) }));
