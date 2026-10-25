@@ -6734,7 +6734,12 @@ const STADIUM = [
     { seats: 9000, gate: 30000, cost: 250000 },
     { seats: 22000, gate: 70000, cost: 800000 },
     { seats: 48000, gate: 140000, cost: 2000000 },
-    { seats: 80000, gate: 240000, cost: 4500000 }
+    { seats: 80000, gate: 240000, cost: 4500000 },
+    { seats: 110000, gate: 380000, cost: 8000000 },
+    { seats: 140000, gate: 560000, cost: 14000000 },
+    { seats: 175000, gate: 820000, cost: 22000000 },
+    { seats: 210000, gate: 1200000, cost: 35000000 },
+    { seats: 250000, gate: 1800000, cost: 50000000 }
 ];
 
 function stadNum(n) {
@@ -6819,12 +6824,81 @@ function buyGear() {
     }, { id: "gear" });
 }
 
+function clubStadSeed(name) {
+    const club = CLUBS.find(function (row) { return row.name === name; });
+    const req = (club && club.required) || 0;
+    if (req >= 92) return 8;
+    if (req >= 87) return 7;
+    if (req >= 81) return 6;
+    if (req >= 76) return 5;
+    if (req >= 70) return 4;
+    if (req >= 64) return 3;
+    if (req >= 56) return 2;
+    return 0;
+}
+
+function copyYard(src) {
+    const yard = src || {};
+    return {
+        lines: !!yard.lines,
+        staff: !!yard.staff,
+        props: Object.assign({}, yard.props || {}),
+        ups: Object.assign({}, yard.ups || {})
+    };
+}
+
+function rememberGround(key) {
+    if (!player || !key) return;
+    if (!player.stadia || typeof player.stadia !== "object" || Array.isArray(player.stadia)) player.stadia = {};
+    ensureYard();
+    const stad = player.stadium || { level: 0, crowd: 0, pay: 0 };
+    player.stadia[key] = {
+        level: stad.level | 0,
+        crowd: stad.crowd || 0,
+        pay: stad.pay || 0,
+        yard: copyYard(player.yard)
+    };
+}
+
+function applyGround(saved, name) {
+    player.stadium = {
+        level: saved ? (saved.level | 0) : clubStadSeed(name),
+        crowd: saved ? (saved.crowd || 0) : 0,
+        pay: saved ? (saved.pay || 0) : 0
+    };
+    player.yard = copyYard(saved && saved.yard);
+}
+
+function bindGround() {
+    if (!player || !player.name || !isClub()) return;
+    if (!player.stadia || typeof player.stadia !== "object" || Array.isArray(player.stadia)) player.stadia = {};
+    if (!player.groundClub) {
+        if (!player.stadium || typeof player.stadium.level !== "number") player.stadium = { level: 0, crowd: 0, pay: 0 };
+        player.stadium.level = Math.max(player.stadium.level | 0, clubStadSeed(player.name));
+        player.groundClub = player.name;
+        return;
+    }
+    if (player.groundClub === player.name) return;
+    rememberGround(player.groundClub);
+    applyGround(player.stadia[player.name], player.name);
+    player.groundClub = player.name;
+}
+
 function ensureStadium() {
     if (!player) return;
     if (!player.stadium || typeof player.stadium.level !== "number") {
         player.stadium = { level: 0, crowd: 0, pay: 0 };
     }
+    bindGround();
     player.stadium.level = Math.max(0, Math.min(STADIUM.length - 1, player.stadium.level | 0));
+    if (isClub() && player.groundClub) rememberGround(player.groundClub);
+}
+
+function wealthLift() {
+    if (!player || isClub()) return 0;
+    const cash = player.respect || 0;
+    if (cash < 500000) return 0;
+    return Math.min(36, Math.round(Math.log10(cash / 100000) * 12));
 }
 
 function ensureYard() {
@@ -8844,9 +8918,11 @@ function transferTo(club) {
         Sfx.champ();
         addLog(isClub() ? t("logPeakClub") : t("logPeakPlayer"), "goal");
         showAura("champ", "+" + money(bonus), ui(club.name), isClub() ? t("peakClubSub") : t("welcome", { city: ui(club.city) }), club.accent, 2800);
+        if (!isClub() && getOverall() < club.required) addLog(t("logRichClub", { name: ui(club.name), pay: money(player.respect) }));
     } else {
         Sfx.transferBig(club.required);
         addLog(isClub() ? t("logPromote", { name: ui(club.name) }) : t("logTransfer", { name: ui(club.name), city: ui(club.city) }));
+        if (!isClub() && getOverall() < club.required) addLog(t("logRichClub", { name: ui(club.name), pay: money(player.respect) }));
         showAura("transfer", "+" + money(bonus), ui(club.name), isClub() ? t("newLeague", { league: ui(club.league) }) : t("welcome", { city: ui(club.city) }), club.color, 2400);
     }
     if (path.length > 1) {
@@ -8914,10 +8990,10 @@ function updateClubs() {
             const mark = document.createElement("b");
             mark.textContent = t("retiredBtn");
             row.appendChild(mark);
-        } else if (overall >= club.required) {
+        } else if (overall >= club.required || (!isClub() && overall + wealthLift() >= club.required)) {
             const button = document.createElement("button");
             button.type = "button";
-            button.textContent = isClub() ? t("promote") : t("transfer");
+            button.textContent = isClub() ? t("promote") : (overall >= club.required ? t("transfer") : t("transferRich"));
             button.addEventListener("click", function () {
                 Sfx.click();
                 transferTo(club);
