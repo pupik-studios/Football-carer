@@ -6558,6 +6558,285 @@ function paintCoachDesk() {
     }
 }
 
+const BOARD_PAY = [5000000, 2000000, 800000];
+const FLOW_PAY = [15000000, 6000000, 2000000];
+const DONATE = [
+    { id: "support_s", pay: 500000, key: "donateS" },
+    { id: "support_m", pay: 2000000, key: "donateM" },
+    { id: "support_b", pay: 8000000, key: "donateB" }
+];
+let pumpHideUntil = 0;
+
+function boardDay(now) {
+    const d = new Date(now);
+    return d.getFullYear() + "-" + (d.getMonth() + 1) + "-" + d.getDate();
+}
+
+function boardMinsLeft(now) {
+    const d = new Date(now);
+    return (23 - d.getHours()) * 60 + (60 - d.getMinutes());
+}
+
+function boardLastHour(now) {
+    return boardMinsLeft(now == null ? gameNow() : now) <= 60;
+}
+
+function pumpWhere() {
+    const open = ["home", "train", "match", "club", "more"];
+    if (player && isClub()) open.push("stad");
+    else open.push("shop");
+    return open[Math.floor(Math.random() * open.length)];
+}
+
+function freshBoard(day) {
+    return {
+        day: day,
+        score: 8,
+        chase: 0,
+        paid: false,
+        pump: 0,
+        pumpChase: 0,
+        pumpWhere: pumpWhere(),
+        pumpPaid: false
+    };
+}
+
+function raceRows(score, chase, last) {
+    const you = score || 0;
+    const night = last ? you + 3 - (chase || 0) : Math.max(1, you - 2);
+    const rows = [
+        { you: true, name: (player && player.name) || t("player"), score: you },
+        { name: langEn() ? "Night forward" : "Ночной форвард", score: night },
+        { name: langEn() ? "Quiet scorer" : "Тихий бомбардир", score: Math.max(0, you - 6) },
+        { name: langEn() ? "The bench" : "Скамейка", score: Math.max(0, you - 11) }
+    ];
+    rows.sort(function (a, b) {
+        if (b.score !== a.score) return b.score - a.score;
+        if (a.you) return -1;
+        if (b.you) return 1;
+        return 0;
+    });
+    return rows;
+}
+
+function flowRows(pump, chase, last) {
+    const you = pump || 0;
+    let hunter = you > 0 ? you - 1 : 1;
+    if (last) hunter = chase ? Math.max(0, you - 1) : you + 1;
+    const rows = [
+        { you: true, name: (player && player.name) || t("player"), score: you },
+        { name: langEn() ? "Hunter" : "Охотник", score: hunter },
+        { name: langEn() ? "Lantern" : "Фонарь", score: Math.max(0, you - 2) },
+        { name: langEn() ? "Porch" : "Крыльцо", score: Math.max(0, you - 4) }
+    ];
+    rows.sort(function (a, b) {
+        if (b.score !== a.score) return b.score - a.score;
+        if (a.you) return -1;
+        if (b.you) return 1;
+        return 0;
+    });
+    return rows;
+}
+
+function grantBoard(prev) {
+    if (!prev || prev.paid) return;
+    prev.paid = true;
+    const place = raceRows(prev.score, prev.chase, true).findIndex(function (row) { return row.you; }) + 1;
+    const pay = BOARD_PAY[place - 1] || 0;
+    if (pay) {
+        player.respect = (player.respect || 0) + pay;
+        addLog(t("logBoardPrize", { place: place, pay: money(pay) }));
+    } else {
+        addLog(t("logBoardOut", { place: place }));
+    }
+    const flowPlace = flowRows(prev.pump || 0, prev.pumpChase || 0, true).findIndex(function (row) { return row.you; }) + 1;
+    const flowPay = (prev.pump || 0) > 0 ? (FLOW_PAY[flowPlace - 1] || 0) : 0;
+    if (flowPay) {
+        player.respect = (player.respect || 0) + flowPay;
+        addLog(t("logFlowPrize", { place: flowPlace, pay: money(flowPay) }));
+    }
+}
+
+function ensureBoard() {
+    if (!player || !player.name) return;
+    const day = boardDay(gameNow());
+    if (!player.board || player.board.day !== day) {
+        if (player.board && player.board.day) grantBoard(player.board);
+        player.board = freshBoard(day);
+    }
+    if (!player.board.pumpWhere) player.board.pumpWhere = pumpWhere();
+}
+
+function noteBoard(kind) {
+    if (!player || !player.name) return;
+    ensureBoard();
+    const last = boardLastHour();
+    if (kind === "match") {
+        player.board.score += 10;
+        if (last) player.board.chase += 6;
+    } else if (kind === "train") {
+        player.board.score += 3;
+        if (last) player.board.chase += 3;
+    }
+}
+
+function paintBoardList(node, rows) {
+    if (!node) return;
+    node.innerHTML = "";
+    rows.forEach(function (row, index) {
+        const li = document.createElement("li");
+        if (row.you) li.className = "you";
+        li.textContent = (index + 1) + ". " + row.name + " · " + row.score;
+        node.appendChild(li);
+    });
+}
+
+function paintBoard() {
+    if (!player || !player.name) return;
+    ensureBoard();
+    const now = gameNow();
+    const last = boardLastHour(now);
+    const mins = Math.max(0, boardMinsLeft(now));
+    const left = get("boardLeft");
+    if (left) {
+        const time = mins >= 60
+            ? t("boardHours", { h: Math.floor(mins / 60), m: mins % 60 })
+            : t("boardMins", { n: mins });
+        left.textContent = t("boardLeft", { time: time });
+    }
+    if (get("boardKicker")) get("boardKicker").textContent = t("boardKicker");
+    if (get("boardTitle")) get("boardTitle").textContent = t("boardTitle");
+    const rows = raceRows(player.board.score, player.board.chase, last);
+    const place = rows.findIndex(function (row) { return row.you; }) + 1;
+    const slip = get("boardSlip");
+    if (slip) {
+        slip.hidden = !last;
+        if (last) slip.textContent = place === 1 ? t("boardHeld") : t("boardSlip");
+    }
+    paintBoardList(get("boardList"), rows);
+    if (get("boardPrize")) get("boardPrize").textContent = t("boardPrize", {
+        a: money(BOARD_PAY[0]),
+        b: money(BOARD_PAY[1]),
+        c: money(BOARD_PAY[2])
+    });
+    if (get("flowKicker")) get("flowKicker").textContent = t("flowKicker");
+    if (get("flowTitle")) get("flowTitle").textContent = t("flowTitle");
+    const flow = flowRows(player.board.pump || 0, player.board.pumpChase || 0, last);
+    const flowPlace = flow.findIndex(function (row) { return row.you; }) + 1;
+    const flowText = get("flowText");
+    if (flowText) flowText.textContent = last && flowPlace > 1 ? t("flowSlip") : t("flowText");
+    paintBoardList(get("flowList"), flow);
+    if (get("flowPrize")) get("flowPrize").textContent = t("boardPrize", {
+        a: money(FLOW_PAY[0]),
+        b: money(FLOW_PAY[1]),
+        c: money(FLOW_PAY[2])
+    });
+    if (get("donateKicker")) get("donateKicker").textContent = t("donateKicker");
+    if (get("donateHint")) get("donateHint").textContent = window.fcPay ? t("donateHint") : t("donateNeed");
+    DONATE.forEach(function (row) {
+        const btn = document.querySelector("[data-donate=\"" + row.id + "\"]");
+        if (btn) btn.textContent = t(row.key, { pay: money(row.pay) });
+    });
+    placePumpkin();
+}
+
+function placePumpkin() {
+    const btn = get("pumpkin");
+    if (!btn) return;
+    const career = get("careerScreen");
+    if (!player || !player.name || !career || career.style.display === "none" || gameNow() < pumpHideUntil) {
+        btn.hidden = true;
+        return;
+    }
+    ensureBoard();
+    const where = player.board.pumpWhere;
+    const panel = document.querySelector(".panel[data-panel=\"" + where + "\"]");
+    if (!panel || !panel.classList.contains("on")) {
+        btn.hidden = true;
+        return;
+    }
+    const box = panel.getBoundingClientRect();
+    if (box.width < 40) {
+        btn.hidden = true;
+        return;
+    }
+    const seed = ((player.board.pump || 0) + 1) * 17 + where.length * 13;
+    const x = box.left + 16 + (seed * 37 % Math.max(20, box.width - 56));
+    const y = box.top + 36 + (seed * 53 % Math.max(20, Math.min(box.height, 480) - 48));
+    btn.style.left = Math.round(x) + "px";
+    btn.style.top = Math.round(y) + "px";
+    btn.hidden = false;
+}
+
+function takePumpkin() {
+    if (!player || !player.name || gameNow() < pumpHideUntil) return;
+    ensureBoard();
+    player.board.pump = (player.board.pump || 0) + 1;
+    player.board.score += 6;
+    if (boardLastHour()) {
+        player.board.chase = (player.board.chase || 0) + 4;
+        player.board.pumpChase = (player.board.pumpChase || 0) + 1;
+    }
+    const prev = player.board.pumpWhere;
+    let next = pumpWhere();
+    if (next === prev) next = next === "home" ? "match" : "home";
+    player.board.pumpWhere = next;
+    pumpHideUntil = gameNow() + 10000;
+    const btn = get("pumpkin");
+    if (btn) btn.hidden = true;
+    Sfx.ding();
+    addLog(t("logPump"));
+    paintBoard();
+    save();
+    setTimeout(placePumpkin, 10000);
+}
+
+function bootYandex() {
+    const host = location.hostname || "";
+    if (host.indexOf("yandex") < 0 && host.indexOf("ya.ru") < 0 && location.search.indexOf("ysdk=1") < 0) return;
+    const script = document.createElement("script");
+    script.src = "/sdk.js";
+    script.async = true;
+    script.onload = function () {
+        if (!window.YaGames) return;
+        YaGames.init().then(function (ysdk) {
+            window.fcYandex = ysdk;
+            if (ysdk.features && ysdk.features.LoadingAPI && ysdk.features.LoadingAPI.ready) ysdk.features.LoadingAPI.ready();
+            const payments = ysdk.getPayments && ysdk.getPayments({ signed: false });
+            if (!payments || !payments.then) return;
+            payments.then(function (api) {
+                window.fcPay = api;
+                paintBoard();
+            }).catch(function () {});
+        }).catch(function () {});
+    };
+    document.head.appendChild(script);
+}
+
+function donate(id) {
+    const row = DONATE.find(function (item) { return item.id === id; });
+    if (!row || !player || !player.name) return;
+    Sfx.click();
+    if (!window.fcPay || !window.fcPay.purchase) {
+        addLog(t("logDonateNeed"));
+        if (get("donateHint")) get("donateHint").textContent = t("donateNeed");
+        Sfx.error();
+        return;
+    }
+    window.fcPay.purchase({ id: id }).then(function (purchase) {
+        player.respect = (player.respect || 0) + row.pay;
+        addLog(t("logDonate", { pay: money(row.pay) }));
+        updateRespect();
+        save();
+        if (purchase && purchase.purchaseToken && window.fcPay.consumePurchase) {
+            window.fcPay.consumePurchase(purchase.purchaseToken);
+        }
+        Sfx.ding();
+    }).catch(function () {
+        Sfx.error();
+    });
+}
+
 function renderAll() {
     ensureStartSquad();
     paintCoachDesk();
@@ -6597,6 +6876,7 @@ function renderAll() {
     paintBet();
     paintBuyout();
     paintUnread();
+    paintBoard();
     maybeCallUp();
     maybeGrantBallon();
 }
@@ -6605,6 +6885,7 @@ function showModeScreen() {
     hideStudioSplash();
     closeEventCal();
     closeSocial();
+    if (get("pumpkin")) get("pumpkin").hidden = true;
     get("modeScreen").style.display = "block";
     get("createScreen").style.display = "none";
     get("careerScreen").style.display = "none";
@@ -6775,6 +7056,7 @@ function showPanel(id) {
     document.querySelectorAll(".career-tabs button").forEach(function (btn) {
         btn.classList.toggle("on", btn.getAttribute("data-panel") === id);
     });
+    placePumpkin();
 }
 
 const STADIUM = [
@@ -7712,6 +7994,7 @@ function train(stat) {
     addLog((gain
         ? t("logTrain", { stat: statWord(stat), n: gain })
         : t("logTrainSlow", { stat: statWord(stat), have: trainBank(stat), need: need })) + (isInjured() ? t("rehab") : ""));
+    noteBoard("train");
     renderAll();
     save();
 }
@@ -8928,6 +9211,7 @@ function playMatch(useBribe) {
         }
 
         scheduleNextMatch();
+        noteBoard("match");
         maybeCallUp();
         friendSawMatch({ result: result, goals: goals, score: scored + ":" + conceded });
         matchBusy = false;
@@ -11483,6 +11767,14 @@ document.addEventListener("DOMContentLoaded", function () {
     loadAuction();
     load();
     showModeScreen();
+    bootYandex();
+    const pumpkinBtn = get("pumpkin");
+    if (pumpkinBtn) pumpkinBtn.addEventListener("click", takePumpkin);
+    document.querySelectorAll("[data-donate]").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+            donate(btn.getAttribute("data-donate"));
+        });
+    });
     setTimeout(function () { messiChipPing(); }, 240000);
     setInterval(function () { messiChipPing(); }, 240000);
     setInterval(function () { friendPing(false); }, 1800000);

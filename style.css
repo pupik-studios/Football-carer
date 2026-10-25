@@ -1432,6 +1432,34 @@ body.mode-club .career-tabs {
     box-shadow: inset 0 0 0 2px var(--gold, #d4af37);
 }
 
+.board-list {
+    margin: 8px 0 10px;
+    padding-left: 18px;
+}
+.board-list li.you {
+    color: #ffd83d;
+    font-weight: 700;
+}
+#boardSlip { color: #ffb020; }
+#pumpkin {
+    position: fixed;
+    z-index: 30;
+    width: 34px;
+    height: 34px;
+    min-height: 34px;
+    margin: 0;
+    padding: 0;
+    border: none;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    color: inherit;
+    font-size: 20px;
+    letter-spacing: 0;
+    text-transform: none;
+    line-height: 34px;
+    opacity: 0.58;
+}
 .panel {
     display: none;
 }

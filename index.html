@@ -39,7 +39,7 @@
       #studioSplash .studio-tap{margin:28px 0 0;letter-spacing:.34em;text-transform:uppercase;font-size:11px;font-weight:800;color:#d4af37}
       #studioSplash .studio-line{width:min(220px,46vw);height:1px;margin:10px 0 6px;background:linear-gradient(90deg,transparent,#d4af37,transparent)}
     </style>
-    <link rel="stylesheet" href="style.css?v=185">
+    <link rel="stylesheet" href="style.css?v=186">
 </head>
 <body>
 
@@ -338,6 +338,7 @@
 </div>
 
 <div id="careerScreen">
+    <button type="button" id="pumpkin" hidden>🎃</button>
     <header class="career-top">
         <button type="button" id="exitCareerBtn" class="back-btn" data-i18n="menu">← Меню</button>
         <h1 id="careerTitle">Моя карьера</h1>
@@ -428,6 +429,26 @@
         <span data-i18n="modeCoach">🏟️ ТРЕНЕР</span>
         <small data-i18n="modeCoachSub">Настоящий клуб зовёт после карьеры. Контракт и зарплата каждую неделю</small>
     </button>
+    <div class="card" id="boardCard">
+        <p class="drop-kicker" id="boardKicker">ТАБЛИЦА</p>
+        <h2 id="boardTitle">Гонка суток</h2>
+        <p class="hint" id="boardLeft"></p>
+        <p class="hint" id="boardSlip" hidden></p>
+        <ol class="board-list" id="boardList"></ol>
+        <p class="hint" id="boardPrize"></p>
+        <p class="drop-kicker" id="flowKicker">ФЛОУМЕРЗ</p>
+        <h2 id="flowTitle">Тыковки</h2>
+        <p class="hint" id="flowText"></p>
+        <ol class="board-list" id="flowList"></ol>
+        <p class="hint" id="flowPrize"></p>
+        <p class="drop-kicker" id="donateKicker">ЯНДЕКС ИГРЫ</p>
+        <div class="donate-row">
+            <button type="button" data-donate="support_s" id="donateS">Поддержать</button>
+            <button type="button" data-donate="support_m" id="donateM">Больше</button>
+            <button type="button" data-donate="support_b" id="donateB">Максимум</button>
+        </div>
+        <p class="hint" id="donateHint"></p>
+    </div>
     <div class="card drop-card" id="dropCard">
         <p class="drop-kicker" id="dropKicker">ОБНОВЛЕНИЕ</p>
         <h2 id="dropTitle">Лучшие связки</h2>
@@ -848,7 +869,7 @@
 </div>
 
 <script src="audio.js?v=171" defer></script>
-<script src="loc.js?v=203" defer></script>
-<script src="game.js?v=209" defer></script>
+<script src="loc.js?v=204" defer></script>
+<script src="game.js?v=210" defer></script>
 </body>
 </html>
