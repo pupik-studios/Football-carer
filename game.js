@@ -285,19 +285,11 @@ const GIVEN = {
     TR: { first: ["Арда", "Хакан", "Дженк", "Озан", "Юсуф", "Кенан", "Энес", "Мерих"], last: ["Гюлер", "Йылмаз", "Демир", "Кылыч", "Шахин", "Айдын", "Коч", "Тосун"], firstEn: ["Arda", "Hakan", "Cenk", "Ozan", "Yusuf", "Kenan", "Enes", "Merih"], lastEn: ["Guler", "Yilmaz", "Demir", "Kilic", "Sahin", "Aydin", "Koc", "Tosun"] }
 };
 
-let nameRoll = 0;
-let shownNames = [];
-
-function localNames(id, count) {
+function randomLocalName(id) {
     const bag = GIVEN[id] || GIVEN.KZ;
     const first = langEn() ? bag.firstEn : bag.first;
     const last = langEn() ? bag.lastEn : bag.last;
-    const out = [];
-    const start = nameRoll % first.length;
-    for (let i = 0; i < count; i++) {
-        out.push(first[(start + i) % first.length] + " " + last[(start + i) % last.length]);
-    }
-    return out;
+    return first[Math.floor(Math.random() * first.length)] + " " + last[Math.floor(Math.random() * last.length)];
 }
 
 function paintNames() {
@@ -307,40 +299,15 @@ function paintNames() {
     const on = selectedMode === "player";
     box.hidden = !on;
     if (!on) return;
-    const names = localNames(selectedNation, 4);
-    const typed = input.value.trim();
-    const keep = typed && names.indexOf(typed) >= 0;
-    if (!keep && (!typed || shownNames.indexOf(typed) >= 0)) input.value = names[0];
-    shownNames = names;
     box.innerHTML = "";
-    const label = document.createElement("p");
-    label.className = "pick-label";
-    label.textContent = t("namePick");
-    const row = document.createElement("div");
-    row.className = "name-row";
-    names.forEach(function (full) {
-        const btn = document.createElement("button");
-        btn.type = "button";
-        btn.textContent = full;
-        if (input.value.trim() === full) btn.classList.add("on");
-        btn.addEventListener("click", function () {
-            Sfx.click();
-            input.value = full;
-            paintNames();
-        });
-        row.appendChild(btn);
-    });
-    const more = document.createElement("button");
-    more.type = "button";
-    more.textContent = t("nameMore");
-    more.addEventListener("click", function () {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.textContent = t("namePick");
+    btn.addEventListener("click", function () {
         Sfx.click();
-        nameRoll += 4;
-        paintNames();
+        input.value = randomLocalName(selectedNation);
     });
-    row.appendChild(more);
-    box.appendChild(label);
-    box.appendChild(row);
+    box.appendChild(btn);
 }
 
 const OLD_AVATARS = ["⚽", "😎", "🧔", "🦁", "🐺", "🦅", "🔥", "👑", "🧊", "💫", "🎯", "🧤", "🛡️", "👦", "🥷"];

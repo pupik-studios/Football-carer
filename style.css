@@ -1848,22 +1848,13 @@ body.in-auction .lang-bar {
     font-size: 14px;
 }
 
-.name-pick { margin: 8px 0 4px; }
-.name-row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-}
-.name-row button {
-    width: auto;
-    margin: 0;
-    min-height: 36px;
-    padding: 6px 10px;
-    font-size: 13px;
+.name-pick { margin: 0; }
+#createScreen #namePick button {
     background: #0a1428;
+    color: #f6f1e6;
     border: 2px solid #30466f;
+    box-shadow: none;
 }
-.name-row button.on { border-color: #d4af37; }
 
 .star-face {
     font-size: 22px;
