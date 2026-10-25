@@ -6590,11 +6590,35 @@ function boardLastHour(now) {
     return boardMinsLeft(now == null ? gameNow() : now) <= 60;
 }
 
-function pumpWhere() {
+function pumpTabs() {
     const open = ["home", "train", "match", "club", "more"];
     if (player && isClub()) open.push("stad");
     else open.push("shop");
+    return open;
+}
+
+function pumpWhere() {
+    const open = pumpTabs();
     return open[Math.floor(Math.random() * open.length)];
+}
+
+function ensurePumpkins() {
+    if (!player || !player.board) return;
+    const tabs = pumpTabs();
+    if (!Array.isArray(player.board.pumps) || player.board.pumps.length < 4) {
+        const used = {};
+        player.board.pumps = [];
+        for (let i = 0; i < 4; i++) {
+            let where = tabs[i % tabs.length];
+            let guard = 0;
+            while (used[where] && guard < 8) {
+                where = tabs[Math.floor(Math.random() * tabs.length)];
+                guard += 1;
+            }
+            used[where] = true;
+            player.board.pumps.push({ where: where, spot: Math.floor(Math.random() * 90), hide: 0 });
+        }
+    }
 }
 
 function freshBoard(day) {
@@ -6674,6 +6698,7 @@ function ensureBoard() {
         player.board = freshBoard(day);
     }
     if (!player.board.pumpWhere) player.board.pumpWhere = pumpWhere();
+    ensurePumpkins();
 }
 
 function noteBoard(kind) {
@@ -6749,55 +6774,86 @@ function paintBoard() {
     placePumpkin();
 }
 
-function placePumpkin() {
-    const btn = get("pumpkin");
-    if (!btn) return;
+function pumpkinButtons() {
     const career = get("careerScreen");
-    if (!player || !player.name || !career || career.style.display === "none" || gameNow() < pumpHideUntil) {
+    if (!career) return [];
+    let nodes = career.querySelectorAll(".pumpkin-bit");
+    if (nodes.length >= 4) return Array.prototype.slice.call(nodes);
+    const old = get("pumpkin");
+    if (old) old.hidden = true;
+    for (let i = nodes.length; i < 4; i++) {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "pumpkin-bit";
+        btn.textContent = "🎃";
         btn.hidden = true;
-        return;
+        btn.setAttribute("data-pump", String(i));
+        btn.addEventListener("click", function () {
+            takePumpkin(i);
+        });
+        career.appendChild(btn);
     }
-    ensureBoard();
-    const where = player.board.pumpWhere;
-    const panel = document.querySelector(".panel[data-panel=\"" + where + "\"]");
-    if (!panel || !panel.classList.contains("on")) {
-        btn.hidden = true;
-        return;
-    }
-    const box = panel.getBoundingClientRect();
-    if (box.width < 40) {
-        btn.hidden = true;
-        return;
-    }
-    const seed = ((player.board.pump || 0) + 1) * 17 + where.length * 13;
-    const x = box.left + 16 + (seed * 37 % Math.max(20, box.width - 56));
-    const y = box.top + 36 + (seed * 53 % Math.max(20, Math.min(box.height, 480) - 48));
-    btn.style.left = Math.round(x) + "px";
-    btn.style.top = Math.round(y) + "px";
-    btn.hidden = false;
+    nodes = career.querySelectorAll(".pumpkin-bit");
+    return Array.prototype.slice.call(nodes);
 }
 
-function takePumpkin() {
-    if (!player || !player.name || gameNow() < pumpHideUntil) return;
+function placePumpkin() {
+    const career = get("careerScreen");
+    const buttons = pumpkinButtons();
+    if (!career || !player || !player.name || career.style.display === "none") {
+        buttons.forEach(function (btn) { btn.hidden = true; });
+        return;
+    }
     ensureBoard();
+    const now = gameNow();
+    player.board.pumps.forEach(function (pump, index) {
+        const btn = buttons[index];
+        if (!btn) return;
+        const panel = document.querySelector(".panel[data-panel=\"" + pump.where + "\"]");
+        if (!panel || !panel.classList.contains("on") || (pump.hide || 0) > now) {
+            btn.hidden = true;
+            return;
+        }
+        const box = panel.getBoundingClientRect();
+        if (box.width < 40) {
+            btn.hidden = true;
+            return;
+        }
+        const seed = (pump.spot || index) + 3;
+        const x = box.left + 12 + ((seed * 37) % Math.max(20, box.width - 52));
+        const y = box.top + 48 + ((seed * 53 + index * 70) % Math.max(24, Math.min(box.height, 520) - 56));
+        btn.style.left = Math.round(x) + "px";
+        btn.style.top = Math.round(y) + "px";
+        btn.hidden = false;
+    });
+}
+
+function takePumpkin(index) {
+    if (!player || !player.name) return;
+    ensureBoard();
+    const pump = player.board.pumps[index];
+    if (!pump || (pump.hide || 0) > gameNow()) return;
     player.board.pump = (player.board.pump || 0) + 1;
     player.board.score += 6;
     if (boardLastHour()) {
         player.board.chase = (player.board.chase || 0) + 4;
         player.board.pumpChase = (player.board.pumpChase || 0) + 1;
     }
-    const prev = player.board.pumpWhere;
-    let next = pumpWhere();
-    if (next === prev) next = next === "home" ? "match" : "home";
-    player.board.pumpWhere = next;
-    pumpHideUntil = gameNow() + 10000;
-    const btn = get("pumpkin");
-    if (btn) btn.hidden = true;
+    const tabs = pumpTabs();
+    let next = pump.where;
+    let guard = 0;
+    while (next === pump.where && guard < 6) {
+        next = tabs[Math.floor(Math.random() * tabs.length)];
+        guard += 1;
+    }
+    pump.where = next;
+    pump.spot = Math.floor(Math.random() * 90);
+    pump.hide = gameNow() + 8000;
     Sfx.ding();
     addLog(t("logPump"));
     paintBoard();
     save();
-    setTimeout(placePumpkin, 10000);
+    setTimeout(placePumpkin, 8000);
 }
 
 function bootYandex() {
@@ -6894,7 +6950,7 @@ function showModeScreen() {
     hideStudioSplash();
     closeEventCal();
     closeSocial();
-    if (get("pumpkin")) get("pumpkin").hidden = true;
+    document.querySelectorAll(".pumpkin-bit").forEach(function (btn) { btn.hidden = true; });
     get("modeScreen").style.display = "block";
     get("createScreen").style.display = "none";
     get("careerScreen").style.display = "none";
@@ -11821,8 +11877,6 @@ document.addEventListener("DOMContentLoaded", function () {
     load();
     showModeScreen();
     bootYandex();
-    const pumpkinBtn = get("pumpkin");
-    if (pumpkinBtn) pumpkinBtn.addEventListener("click", takePumpkin);
     document.querySelectorAll("[data-donate]").forEach(function (btn) {
         btn.addEventListener("click", function () {
             donate(btn.getAttribute("data-donate"));

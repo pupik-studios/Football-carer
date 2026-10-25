@@ -1441,7 +1441,8 @@ body.mode-club .career-tabs {
     font-weight: 700;
 }
 #boardSlip { color: #ffb020; }
-#pumpkin {
+#pumpkin,
+.pumpkin-bit {
     position: fixed;
     z-index: 30;
     width: 34px;
