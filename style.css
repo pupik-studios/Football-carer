@@ -1987,6 +1987,19 @@ button.pitch-slot {
     color: #fff;
 }
 
+.pitch-slot.hurt,
+.bench-chip.hurt {
+    border-color: #e54545;
+    background: rgba(120, 16, 16, 0.78);
+    color: #ffd6d6;
+    box-shadow: 0 0 14px rgba(229, 69, 69, 0.5);
+}
+
+.pitch-slot.hurt small,
+.bench-chip.hurt small {
+    color: #ff8a8a;
+}
+
 .pitch-slot b {
     display: block;
     font-size: 11px;

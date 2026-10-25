@@ -4376,6 +4376,13 @@ function updateHeader() {
     if (get("weekDisplayClub")) get("weekDisplayClub").textContent = player.week;
     get("ageLine").hidden = clubMode;
     if (get("weekLine")) get("weekLine").hidden = !clubMode;
+    if (player.coach) {
+        get("playerNameDisplay").textContent = player.coachFrom || t("coachBlank");
+        get("labelClub").textContent = t("labelClub");
+        get("clubDisplay").textContent = ui(player.name);
+        if (get("clubLine")) get("clubLine").textContent = ui(player.name);
+        if (get("futPos")) get("futPos").textContent = "ТР";
+    }
     const shopTab = document.querySelector('#careerTabs [data-panel="shop"]');
     if (shopTab) shopTab.hidden = clubMode;
     const stadTab = document.querySelector('#careerTabs [data-panel="stad"]');
@@ -4388,9 +4395,9 @@ function updateHeader() {
     if (aucCard) aucCard.hidden = !clubMode;
     setFace(get("avatar"), clubMode ? player.name : (player.avatar || "p0"), clubMode, clubMode ? null : wearLook());
     if (get("careerTitle")) {
-        get("careerTitle").textContent = clubMode
-            ? (player.coach && player.coachFrom ? t("coachTitle", { name: player.coachFrom }) : t("myClub"))
-            : t("myCareer");
+        get("careerTitle").textContent = player.coach
+            ? t("coachTitle", { name: player.coachFrom || t("coachBlank") })
+            : (clubMode ? t("myClub") : t("myCareer"));
     }
     if (get("tabClub")) get("tabClub").textContent = clubMode ? t("tabClub") : t("tabClubs");
     if (get("transfersTitle")) {
@@ -6494,6 +6501,8 @@ function paintCoachDesk() {
         return !offerFits(CLUBS.find(function (club) { return club.name === name; }));
     });
     if (stale) refreshClubOffers();
+    const kicker = card.querySelector(".drop-kicker");
+    if (kicker) kicker.textContent = t("coachDeskKicker");
     const club = get("coachDeskClub");
     if (club) club.textContent = ui(player.name);
     const rep = get("coachDeskRep");
@@ -6890,7 +6899,7 @@ function showModeScreen() {
     get("createScreen").style.display = "none";
     get("careerScreen").style.display = "none";
     if (get("auctionScreen")) get("auctionScreen").style.display = "none";
-    document.body.classList.remove("in-career", "mode-club", "in-auction", "matchday", "hot", "injured");
+    document.body.classList.remove("in-career", "mode-club", "mode-coach", "in-auction", "matchday", "hot", "injured");
     if (get("auctionScreen")) {
         get("auctionScreen").hidden = true;
         get("auctionScreen").style.display = "none";
@@ -6911,9 +6920,13 @@ function updateContinueBtn() {
     const has = !!(player && player.name);
     btn.hidden = !has;
     if (!has || !meta) return;
-    meta.textContent = isClub()
-        ? t("continueClub", { name: player.name, club: ui(player.club), week: player.week })
-        : t("continuePlayer", { name: player.name, pos: player.position, club: ui(player.club) });
+    const coach = !!(player && player.coach);
+    btn.classList.toggle("coach", coach);
+    meta.textContent = coach
+        ? t("continueCoach", { name: player.coachFrom || t("coachBlank"), club: ui(player.name), week: player.week })
+        : isClub()
+            ? t("continueClub", { name: player.name, club: ui(player.club), week: player.week })
+            : t("continuePlayer", { name: player.name, pos: player.position, club: ui(player.club) });
 }
 
 function exitToMenu() {
@@ -7035,7 +7048,8 @@ function showCareer() {
     get("careerScreen").style.display = "block";
     if (get("auctionScreen")) get("auctionScreen").style.display = "none";
     document.body.classList.remove("in-auction");
-    document.body.classList.toggle("mode-club", isClub());
+    document.body.classList.toggle("mode-club", isClub() && !(player && player.coach));
+    document.body.classList.toggle("mode-coach", !!(player && player.coach));
     document.body.classList.add("in-career");
     if (get("auctionScreen")) {
         get("auctionScreen").hidden = true;
@@ -7863,6 +7877,11 @@ function startRestTicker() {
 }
 
 function applyClubAura() {
+    if (player && player.coach) {
+        document.documentElement.style.setProperty("--club", "#5c6b84");
+        document.documentElement.style.setProperty("--club-accent", "#8aa0c8");
+        return;
+    }
     const club = clubByName(player.club);
     const color = player.color || club.color || "#30466f";
     const accent = player.accent || club.accent || "#ffd83d";
@@ -8901,7 +8920,7 @@ function playMatch(useBribe) {
     let squadBoost = 0;
     if (isClub()) {
         const xi = clubLineup();
-        const starters = xi.slots.map(function (slot) { return slot.star; }).filter(Boolean);
+        const starters = xi.slots.map(function (slot) { return slot.star; }).filter(function (star) { return star && !squadHurt(star.id); });
         if (!starters.length) squadBoost = -0.28;
         else {
             const avg = starters.reduce(function (sum, star) { return sum + star.ovr; }, 0) / starters.length;
@@ -9211,6 +9230,7 @@ function playMatch(useBribe) {
         }
 
         scheduleNextMatch();
+        if (isClub()) rollSquadInjuries();
         noteBoard("match");
         maybeCallUp();
         friendSawMatch({ result: result, goals: goals, score: scored + ":" + conceded });
@@ -9471,7 +9491,7 @@ function sackCoach() {
     player.clubRep = clamp((player.clubRep || 50) - 8, 1, 99);
     addFame(-8);
     addLog(t("logSacked", { club: ui(club) }));
-    document.body.classList.remove("mode-club");
+    document.body.classList.remove("mode-club", "mode-coach");
     Sfx.error();
 }
 
@@ -10047,6 +10067,35 @@ function squadRow(star, onTheBench) {
     return row;
 }
 
+function ensureSquadInj() {
+    if (!player) return;
+    if (!player.squadInj || typeof player.squadInj !== "object" || Array.isArray(player.squadInj)) player.squadInj = {};
+    Object.keys(player.squadInj).forEach(function (id) {
+        const row = player.squadInj[id];
+        if (!row || (player.week || 1) >= (row.until || 0) || (player.squad || []).indexOf(id) < 0) delete player.squadInj[id];
+    });
+}
+
+function squadHurt(id) {
+    if (!player || !id || !isClub()) return false;
+    ensureSquadInj();
+    return !!player.squadInj[id];
+}
+
+function rollSquadInjuries() {
+    if (!player || !isClub()) return;
+    ensureSquadInj();
+    const xi = clubLineup();
+    let n = 0;
+    xi.slots.forEach(function (slot) {
+        if (n >= 2 || !slot.star || squadHurt(slot.star.id)) return;
+        if (Math.random() > 0.14) return;
+        player.squadInj[slot.star.id] = { until: (player.week || 1) + 2 + Math.floor(Math.random() * 3) };
+        n += 1;
+    });
+    if (n) addLog(t("logSquadHurt", { n: n }));
+}
+
 function paintPitchSlots(pitch, xi, live) {
     let line = null;
     let last = "";
@@ -10060,14 +10109,15 @@ function paintPitchSlots(pitch, xi, live) {
         }
         const cell = document.createElement(live && slot.star ? "button" : "div");
         if (live && slot.star) cell.type = "button";
-        cell.className = "pitch-slot" + (slot.star ? " filled" : "") + (slot.star && slot.star.exclusive ? " exclusive" : "");
+        const hurt = !!(live && slot.star && squadHurt(slot.star.id));
+        cell.className = "pitch-slot" + (slot.star ? " filled" : "") + (slot.star && slot.star.exclusive ? " exclusive" : "") + (hurt ? " hurt" : "");
         if (slot.star) {
             if (live) cell.setAttribute("data-role", slot.star.id);
             const name = document.createElement("b");
             name.textContent = (slot.star.flag ? slot.star.flag + " " : "") + (shown(slot.star) || slot.star.name || "");
             cell.appendChild(name);
             const meta = document.createElement("small");
-            meta.textContent = (slot.star.pos || "") + " " + (slot.star.ovr || "");
+            meta.textContent = (slot.star.pos || "") + " " + (slot.star.ovr || "") + (hurt ? " · " + t("squadHurt") : "");
             cell.appendChild(meta);
         } else {
             cell.textContent = slot.pos;
@@ -10137,14 +10187,17 @@ function updateSquad() {
         voucherBuy.disabled = (player.respect || 0) < VOUCHER_COST;
     }
     const xi = clubLineup();
-    const starters = xi.slots.map(function (slot) { return slot.star; }).filter(Boolean);
+    const starters = xi.slots.map(function (slot) { return slot.star; }).filter(function (star) { return star && !squadHurt(star.id); });
+    const hurtN = xi.slots.filter(function (slot) { return slot.star && squadHurt(slot.star.id); }).length;
     const avg = starters.length
         ? Math.round(starters.reduce(function (sum, star) { return sum + star.ovr; }, 0) / starters.length)
         : 0;
     if (hint) {
-        hint.textContent = starters.length || xi.bench.length
-            ? t("squadCount", { xi: starters.length, b: xi.bench.length, avg: avg })
-            : t("squadHint");
+        hint.textContent = hurtN
+            ? t("squadHurtHint", { n: hurtN })
+            : starters.length || xi.bench.length
+                ? t("squadCount", { xi: starters.length, b: xi.bench.length, avg: avg })
+                : t("squadHint");
     }
 
     paintPitchSlots(pitch, xi, true);
@@ -10154,12 +10207,12 @@ function updateSquad() {
         xi.bench.forEach(function (star) {
             const chip = document.createElement("button");
             chip.type = "button";
-            chip.className = "bench-chip" + (star.ovr < 78 ? " low" : "");
+            chip.className = "bench-chip" + (star.ovr < 78 ? " low" : "") + (squadHurt(star.id) ? " hurt" : "");
             chip.setAttribute("data-role", star.id);
             const name = document.createElement("b");
             name.textContent = (star.flag ? star.flag + " " : "") + (shown(star) || star.name || "");
             const meta = document.createElement("small");
-            meta.textContent = (star.pos || "") + " · " + (star.ovr || "");
+            meta.textContent = (star.pos || "") + " · " + (star.ovr || "") + (squadHurt(star.id) ? " · " + t("squadHurt") : "");
             chip.appendChild(name);
             chip.appendChild(meta);
             bench.appendChild(chip);
