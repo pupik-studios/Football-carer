@@ -9324,7 +9324,34 @@ function closeClubAsk(pick, sum) {
     if (job && job.done) job.done(pick, sum);
 }
 
+function noPermit(clubName) {
+    if (!player || player.coach) return false;
+    if (isClub()) return true;
+    if (!clubName || !player.club) return false;
+    if (clubName === player.club) return true;
+    const alias = CLUB_ALIAS[player.club];
+    return !!(alias && clubName === alias);
+}
+
+function payOwn(clubName, kind, cost, done, meta) {
+    const pay = Math.max(1, Math.round(cost || 0));
+    const list = dealListName(kind, meta);
+    if ((player.respect || 0) < pay) {
+        Sfx.error();
+        addLog(t("askNo_cash", { club: ui(clubName || homeClubName() || ""), pay: money(pay), list: list }));
+        if (done) done(false, 0);
+        return;
+    }
+    player.respect -= pay;
+    updateRespect();
+    if (done) done(true, pay);
+}
+
 function chargeAsk(clubName, kind, cost, done, meta) {
+    if (noPermit(clubName)) {
+        payOwn(clubName, kind, cost, done, meta);
+        return;
+    }
     const coach = !!(player && player.coach);
     const who = coach ? (homeClubName() || clubName) : clubName;
     const dealMeta = Object.assign({}, meta || {});
@@ -9475,6 +9502,25 @@ function releaseStar(star) {
     if (!isClub() || !Array.isArray(player.squad)) return;
     if (player.squad.indexOf(star.id) < 0) return;
     const fair = starCost(star.ovr, star);
+    if (noPermit(homeClubName())) {
+        const verdict = saleVerdict(star);
+        const index = player.squad.indexOf(star.id);
+        player.squad.splice(index, 1);
+        if (Array.isArray(player.draftBag)) {
+            player.draftBag = player.draftBag.filter(function (item) { return item.id !== star.id; });
+        }
+        if (player.draftLast && player.draftLast.id === star.id) player.draftLast = null;
+        player.respect = (player.respect || 0) + verdict.pay;
+        const gain = Math.max(1, Math.round((star.ovr - 74) / 5));
+        starBoostKeys(star.pos).forEach(function (key) {
+            if (typeof player.stats[key] === "number") player.stats[key] = Math.max(40, player.stats[key] - gain);
+        });
+        addLog(t("logSold", { name: shown(star), pay: money(verdict.pay) }));
+        updateRespect();
+        renderAll();
+        save();
+        return;
+    }
     openClubAsk(homeClubName(), "sale", function (pick) {
         if (pick === "busy") return;
         if (pick !== "club") {
