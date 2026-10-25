@@ -718,9 +718,74 @@ h2 {
     background: none;
 }
 
+.pull-reveal[data-drop="duo"] {
+    background: radial-gradient(circle at 50% 42%, #5a2040 0%, #07080c 68%);
+}
+.pull-reveal[data-drop="ucl"] {
+    background: #05060a;
+}
+.pull-reveal[data-drop="ucl"]::before {
+    content: "";
+    position: absolute;
+    inset: -20%;
+    background: conic-gradient(from 0deg, #ff4d6d, #ffb020, #ffe566, #3dff8a, #4db8ff, #c084fc, #ff4d6d);
+    animation: pullSpin 2.4s linear infinite;
+    opacity: 0.55;
+}
+.pull-reveal[data-drop="ballon"] {
+    background: radial-gradient(circle at 50% 18%, #8a6a22 0%, #07080c 62%);
+}
+.pull-reveal[data-drop="serie"] {
+    background: repeating-linear-gradient(90deg, #071428 0 18px, #101820 18px 36px);
+}
+.pull-reveal[data-drop="liga"] {
+    background: linear-gradient(120deg, #8d1530 0%, #120814 46%, #0a2048 100%);
+}
+.pull-card.arrive { animation: pullDuo 0.9s cubic-bezier(.2,.8,.2,1) both; }
+.pull-reveal[data-drop="ucl"] .pull-card.arrive { animation: pullFlip 0.95s ease both; }
+.pull-reveal[data-drop="ballon"] .pull-card.arrive { animation: pullDrop 1s cubic-bezier(.15,.9,.3,1.2) both; }
+.pull-reveal[data-drop="serie"] .pull-card.arrive { animation: pullSweep 0.85s ease both; }
+.pull-reveal[data-drop="liga"] .pull-card.arrive { animation: pullPop 0.8s cubic-bezier(.2,1.4,.4,1) both; }
+@keyframes pullDuo {
+    0% { opacity: 0; filter: blur(8px); transform: scale(0.92); }
+    100% { opacity: 1; filter: none; transform: none; }
+}
+@keyframes pullFlip {
+    0% { transform: rotateY(90deg) scale(0.8); opacity: 0; }
+    100% { transform: none; opacity: 1; }
+}
+@keyframes pullDrop {
+    0% { transform: translateY(-70vh) rotate(-8deg); opacity: 0; }
+    70% { transform: translateY(12px) rotate(2deg); opacity: 1; }
+    100% { transform: none; }
+}
+@keyframes pullSweep {
+    0% { transform: translateX(-80vw) skewX(-12deg); opacity: 0; }
+    100% { transform: none; opacity: 1; }
+}
+@keyframes pullPop {
+    0% { transform: scale(0.15); opacity: 0; }
+    100% { transform: none; opacity: 1; }
+}
+@keyframes pullSpin {
+    to { transform: rotate(1turn); }
+}
 .pull-card.tone-dusk {
     border-color: #e7b0c4;
     background: linear-gradient(180deg, #4a1830, #14080e);
+}
+.pull-card.tone-ballon {
+    border-color: #ffd83d;
+    background: radial-gradient(circle at 50% 0%, #6b5420, #1a1408 70%);
+    box-shadow: 0 0 36px rgba(255, 216, 61, 0.45);
+}
+.pull-card.tone-serie {
+    border-color: #7eb6ff;
+    background: linear-gradient(180deg, #10284a, #070b12);
+}
+.pull-card.tone-liga {
+    border-color: #ff5a7a;
+    background: linear-gradient(160deg, #4a1020, #0c1830);
 }
 
 .pull-card.tone-rainbow {
@@ -955,7 +1020,14 @@ h2 {
     align-items: center;
     justify-content: center;
     padding: 20px;
+    overflow: hidden;
     background: rgba(0, 0, 0, 0.82);
+}
+.pull-reveal .pull-card { position: relative; z-index: 2; }
+.pull-reveal[data-drop="ucl"] { perspective: 900px; }
+.pull-reveal[data-drop="ucl"]::before { z-index: 0; pointer-events: none; }
+.pull-reveal[data-drop="ucl"] .pull-card.tone-rainbow.arrive {
+    animation: pullFlip 0.95s ease both, rainbow-move 5s linear infinite;
 }
 
 .pull-reveal[hidden] {

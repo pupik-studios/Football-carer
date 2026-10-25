@@ -3622,9 +3622,13 @@ function showPull(last) {
     const card = box.querySelector(".pull-card");
     const intro = get("pullIntro");
     const introText = get("pullIntroText");
+    const live = dropNow().drop || {};
+    box.setAttribute("data-drop", live.id || "duo");
     if (card) {
-        const tone = last && last.id && liveReward(last.id) ? (dropNow().drop.tone || "dusk") : "";
-        card.className = "pull-card" + (tone ? " tone-" + tone : "");
+        card.className = "pull-card tone-" + (live.tone || "dusk");
+        card.classList.remove("arrive");
+        void card.offsetWidth;
+        card.classList.add("arrive");
     }
     if (face.pool !== "A" || !intro || !introText) {
         if (intro) intro.hidden = true;
@@ -4346,7 +4350,7 @@ function updateHeader() {
         get("transfersTitle").textContent = clubMode ? t("leagues") : t("transfers");
     }
     if (get("marketCard")) get("marketCard").hidden = !clubMode;
-    if (get("squadCard")) get("squadCard").hidden = !clubMode;
+    if (get("squadCard")) get("squadCard").hidden = !(player && player.name);
     if (get("trainHint")) {
         get("trainHint").textContent = clubMode
             ? t("trainHintClub")
@@ -8856,6 +8860,10 @@ function transferTo(club) {
     }
     player.nextOpponent = null;
     ensureCalendar();
+    if (!isClub()) {
+        const mates = matesForClub(club.name);
+        if (mates.length) addLog(t("clubSquad", { club: ui(club.name), n: mates.length }));
+    }
     renderAll();
     save();
 }
@@ -9585,6 +9593,35 @@ function squadRow(star, onTheBench) {
     return row;
 }
 
+function paintPitchSlots(pitch, xi, live) {
+    let line = null;
+    let last = "";
+    xi.slots.forEach(function (slot) {
+        const band = slot.pos === "GK" ? "g" : (slot.pos === "LB" || slot.pos === "CB" || slot.pos === "RB") ? "d" : (slot.pos === "LW" || slot.pos === "ST" || slot.pos === "RW") ? "a" : "m";
+        if (band !== last) {
+            line = document.createElement("div");
+            line.className = "pitch-line";
+            pitch.appendChild(line);
+            last = band;
+        }
+        const cell = document.createElement(live && slot.star ? "button" : "div");
+        if (live && slot.star) cell.type = "button";
+        cell.className = "pitch-slot" + (slot.star ? " filled" : "") + (slot.star && slot.star.exclusive ? " exclusive" : "");
+        if (slot.star) {
+            if (live) cell.setAttribute("data-role", slot.star.id);
+            const name = document.createElement("b");
+            name.textContent = (slot.star.flag ? slot.star.flag + " " : "") + (shown(slot.star) || slot.star.name || "");
+            cell.appendChild(name);
+            const meta = document.createElement("small");
+            meta.textContent = (slot.star.pos || "") + " " + (slot.star.ovr || "");
+            cell.appendChild(meta);
+        } else {
+            cell.textContent = slot.pos;
+        }
+        line.appendChild(cell);
+    });
+}
+
 function updateSquad() {
     const pitch = get("squadPitch");
     const box = get("squad");
@@ -9596,9 +9633,37 @@ function updateSquad() {
     box.innerHTML = "";
     if (bench) bench.innerHTML = "";
     if (!isClub()) {
-        if (benchBox) benchBox.hidden = true;
+        const bar = get("voucherBar");
+        if (bar) bar.hidden = true;
+        const mates = matesForClub(player.club || "");
+        const savedBench = player.benchPins;
+        const savedXi = player.xiPins;
+        player.benchPins = [];
+        player.xiPins = [];
+        const xi = lineupOf(mates);
+        player.benchPins = savedBench;
+        player.xiPins = savedXi;
+        if (hint) hint.textContent = t("clubSquad", { club: ui(player.club || ""), n: mates.length });
+        paintPitchSlots(pitch, xi, false);
+        if (benchBox) benchBox.hidden = !xi.bench.length;
+        if (bench) {
+            xi.bench.forEach(function (star) {
+                const chip = document.createElement("div");
+                chip.className = "bench-chip";
+                const name = document.createElement("b");
+                name.textContent = (star.flag ? star.flag + " " : "") + (shown(star) || star.name || "");
+                const meta = document.createElement("small");
+                meta.textContent = (star.pos || "") + " · " + (star.ovr || "");
+                chip.appendChild(name);
+                chip.appendChild(meta);
+                bench.appendChild(chip);
+            });
+        }
+        pitch.hidden = false;
         return;
     }
+    const voucherBar = get("voucherBar");
+    if (voucherBar) voucherBar.hidden = false;
     ensureDraft();
     let draftedIn = false;
     (player.draftBag || []).forEach(function (item) {
@@ -9628,32 +9693,7 @@ function updateSquad() {
             : t("squadHint");
     }
 
-    let line = null;
-    let last = "";
-    xi.slots.forEach(function (slot) {
-        const band = slot.pos === "GK" ? "g" : (slot.pos === "LB" || slot.pos === "CB" || slot.pos === "RB") ? "d" : (slot.pos === "LW" || slot.pos === "ST" || slot.pos === "RW") ? "a" : "m";
-        if (band !== last) {
-            line = document.createElement("div");
-            line.className = "pitch-line";
-            pitch.appendChild(line);
-            last = band;
-        }
-        const cell = document.createElement(slot.star ? "button" : "div");
-        cell.type = slot.star ? "button" : undefined;
-        cell.className = "pitch-slot" + (slot.star ? " filled" : "") + (slot.star && slot.star.exclusive ? " exclusive" : "");
-        if (slot.star) {
-            cell.setAttribute("data-role", slot.star.id);
-                const name = document.createElement("b");
-            name.textContent = (slot.star.flag ? slot.star.flag + " " : "") + (shown(slot.star) || slot.star.name || "");
-            cell.appendChild(name);
-                const meta = document.createElement("small");
-            meta.textContent = (slot.star.pos || "") + " " + (slot.star.ovr || "");
-            cell.appendChild(meta);
-            } else {
-            cell.textContent = slot.pos;
-        }
-        line.appendChild(cell);
-    });
+    paintPitchSlots(pitch, xi, true);
 
     if (benchBox) benchBox.hidden = !xi.bench.length;
     if (bench) {
