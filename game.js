@@ -263,6 +263,86 @@ const NATIONS = [
     { id: "TR", flag: "🇹🇷", name: "Турция", nameEn: "Turkey", city: "Стамбул", cityEn: "Istanbul" }
 ];
 
+const GIVEN = {
+    KZ: { first: ["Алибек", "Данияр", "Ерлан", "Нурлан", "Бекзат", "Азамат", "Тимур", "Арман"], last: ["Жумагалиев", "Смагулов", "Ахметов", "Нургалиев", "Касымов", "Омаров", "Сапаров", "Бекбаев"], firstEn: ["Alibek", "Daniyar", "Yerlan", "Nurlan", "Bekzat", "Azamat", "Timur", "Arman"], lastEn: ["Zhumagaliyev", "Smagulov", "Akhmetov", "Nurgaliyev", "Kasymov", "Omarov", "Saparov", "Bekbayev"] },
+    RU: { first: ["Александр", "Дмитрий", "Иван", "Артём", "Кирилл", "Максим", "Никита", "Егор"], last: ["Иванов", "Петров", "Соколов", "Кузнецов", "Морозов", "Волков", "Лебедев", "Смирнов"], firstEn: ["Alexander", "Dmitry", "Ivan", "Artyom", "Kirill", "Maxim", "Nikita", "Egor"], lastEn: ["Ivanov", "Petrov", "Sokolov", "Kuznetsov", "Morozov", "Volkov", "Lebedev", "Smirnov"] },
+    UZ: { first: ["Жасур", "Достон", "Аббос", "Отабек", "Сардор", "Бехзод", "Азиз", "Элёр"], last: ["Каримов", "Рашидов", "Юлдашев", "Назаров", "Турсунов", "Холматов", "Салимов", "Мирзаев"], firstEn: ["Jasur", "Doston", "Abbos", "Otabek", "Sardor", "Bekhzod", "Aziz", "Elyor"], lastEn: ["Karimov", "Rashidov", "Yuldashev", "Nazarov", "Tursunov", "Kholmatov", "Salimov", "Mirzaev"] },
+    BY: { first: ["Андрей", "Павел", "Максим", "Никита", "Артём", "Егор", "Денис", "Илья"], last: ["Коваль", "Новик", "Жук", "Богданович", "Савицкий", "Левчук", "Гриневич", "Казакевич"], firstEn: ["Andrei", "Pavel", "Maxim", "Nikita", "Artyom", "Egor", "Denis", "Ilya"], lastEn: ["Koval", "Novik", "Zhuk", "Bogdanovich", "Savitsky", "Levchuk", "Grinevich", "Kazakevich"] },
+    RS: { first: ["Душан", "Никола", "Лука", "Стефан", "Марко", "Неманя", "Филип", "Милош"], last: ["Йович", "Петрович", "Николич", "Маркович", "Савич", "Илич", "Попович", "Станкович"], firstEn: ["Dusan", "Nikola", "Luka", "Stefan", "Marko", "Nemanja", "Filip", "Milos"], lastEn: ["Jovic", "Petrovic", "Nikolic", "Markovic", "Savic", "Ilic", "Popovic", "Stankovic"] },
+    BR: { first: ["Габриэл", "Лукас", "Матеус", "Педро", "Рафаэл", "Бруно", "Фелипе", "Родриго"], last: ["Силва", "Сантос", "Оливейра", "Соуза", "Перейра", "Феррейра", "Алвес", "Лима"], firstEn: ["Gabriel", "Lucas", "Matheus", "Pedro", "Rafael", "Bruno", "Felipe", "Rodrigo"], lastEn: ["Silva", "Santos", "Oliveira", "Souza", "Pereira", "Ferreira", "Alves", "Lima"] },
+    AR: { first: ["Лаутаро", "Хулиан", "Энцо", "Николас", "Матиас", "Франко", "Тьяго", "Маркос"], last: ["Гонсалес", "Родригес", "Фернандес", "Лопес", "Мартинес", "Гарсия", "Ромеро", "Альварес"], firstEn: ["Lautaro", "Julian", "Enzo", "Nicolas", "Matias", "Franco", "Thiago", "Marcos"], lastEn: ["Gonzalez", "Rodriguez", "Fernandez", "Lopez", "Martinez", "Garcia", "Romero", "Alvarez"] },
+    FR: { first: ["Антуан", "Оливье", "Тео", "Орельен", "Юго", "Адриен", "Люка", "Батист"], last: ["Дюбуа", "Мартен", "Бернар", "Леруа", "Морель", "Лоран", "Лефевр", "Жирар"], firstEn: ["Antoine", "Olivier", "Theo", "Aurelien", "Hugo", "Adrien", "Lucas", "Baptiste"], lastEn: ["Dubois", "Martin", "Bernard", "Leroy", "Morel", "Laurent", "Lefevre", "Girard"] },
+    DE: { first: ["Леон", "Ян", "Лукас", "Тим", "Йонас", "Феликс", "Никлас", "Флориан"], last: ["Мюллер", "Шмидт", "Шнайдер", "Фишер", "Вебер", "Майер", "Вагнер", "Шульц"], firstEn: ["Leon", "Jan", "Lukas", "Tim", "Jonas", "Felix", "Niklas", "Florian"], lastEn: ["Muller", "Schmidt", "Schneider", "Fischer", "Weber", "Meyer", "Wagner", "Schulz"] },
+    ES: { first: ["Алехандро", "Пабло", "Серхио", "Альваро", "Маркос", "Уго", "Икер", "Педро"], last: ["Гарсия", "Фернандес", "Гонсалес", "Родригес", "Лопес", "Мартинес", "Санчес", "Руис"], firstEn: ["Alejandro", "Pablo", "Sergio", "Alvaro", "Marcos", "Hugo", "Iker", "Pedro"], lastEn: ["Garcia", "Fernandez", "Gonzalez", "Rodriguez", "Lopez", "Martinez", "Sanchez", "Ruiz"] },
+    IT: { first: ["Лоренцо", "Марко", "Маттео", "Андреа", "Федерико", "Николо", "Давиде", "Лука"], last: ["Росси", "Руссо", "Феррари", "Эспозито", "Бьянки", "Романо", "Риччи", "Греко"], firstEn: ["Lorenzo", "Marco", "Matteo", "Andrea", "Federico", "Nicolo", "Davide", "Luca"], lastEn: ["Rossi", "Russo", "Ferrari", "Esposito", "Bianchi", "Romano", "Ricci", "Greco"] },
+    PT: { first: ["Франциско", "Жуан", "Диогу", "Гонсалу", "Бернарду", "Педру", "Андре", "Рубен"], last: ["Мендес", "Силва", "Фернандеш", "Кошта", "Перейра", "Оливейра", "Карвалью", "Алвеш"], firstEn: ["Francisco", "Joao", "Diogo", "Goncalo", "Bernardo", "Pedro", "Andre", "Ruben"], lastEn: ["Mendes", "Silva", "Fernandes", "Costa", "Pereira", "Oliveira", "Carvalho", "Alves"] },
+    GB: { first: ["Гарри", "Джек", "Джеймс", "Оливер", "Джордж", "Чарли", "Генри", "Арчи"], last: ["Смит", "Джонс", "Уильямс", "Браун", "Тейлор", "Дэвис", "Уилсон", "Эванс"], firstEn: ["Harry", "Jack", "James", "Oliver", "George", "Charlie", "Henry", "Archie"], lastEn: ["Smith", "Jones", "Williams", "Brown", "Taylor", "Davies", "Wilson", "Evans"] },
+    NL: { first: ["Дан", "Сем", "Леви", "Ноа", "Милан", "Тим", "Йессе", "Брам"], last: ["де Йонг", "ван Дейк", "Янсен", "Виссер", "де Бур", "Смит", "Мейер", "Бос"], firstEn: ["Daan", "Sem", "Levi", "Noah", "Milan", "Tim", "Jesse", "Bram"], lastEn: ["de Jong", "van Dijk", "Jansen", "Visser", "de Boer", "Smit", "Meyer", "Bos"] },
+    HR: { first: ["Лука", "Иван", "Матео", "Андрей", "Йосип", "Марко", "Анте", "Никола"], last: ["Ковачич", "Петкович", "Бабич", "Марич", "Хорват", "Кнежевич", "Томич", "Новак"], firstEn: ["Luka", "Ivan", "Mateo", "Andrej", "Josip", "Marko", "Ante", "Nikola"], lastEn: ["Kovacic", "Petkovic", "Babic", "Maric", "Horvat", "Knezevic", "Tomic", "Novak"] },
+    NG: { first: ["Виктор", "Самуэль", "Тайво", "Келечи", "Ола", "Чиди", "Ифеаньи", "Джошуа"], last: ["Оконкво", "Окафор", "Балогун", "Эзе", "Ивоби", "Нвакаэме", "Адебайо", "Оньека"], firstEn: ["Victor", "Samuel", "Taiwo", "Kelechi", "Ola", "Chidi", "Ifeanyi", "Joshua"], lastEn: ["Okonkwo", "Okafor", "Balogun", "Eze", "Iwobi", "Nwakaeme", "Adebayo", "Onyeka"] },
+    SN: { first: ["Садио", "Идрисса", "Калиду", "Мусса", "Папе", "Абду", "Ламин", "Исмаила"], last: ["Манэ", "Гуйе", "Кулибали", "Ндиай", "Сарр", "Диалло", "Диенг", "Сиссе"], firstEn: ["Sadio", "Idrissa", "Kalidou", "Moussa", "Pape", "Abdou", "Lamine", "Ismaila"], lastEn: ["Mane", "Gueye", "Koulibaly", "Ndiaye", "Sarr", "Diallo", "Dieng", "Cisse"] },
+    JP: { first: ["Такуми", "Каору", "Дайдзен", "Ао", "Кёго", "Рицу", "Юя", "Кейсуке"], last: ["Минамино", "Митома", "Кубо", "Доан", "Ито", "Эндо", "Судзуки", "Танака"], firstEn: ["Takumi", "Kaoru", "Daizen", "Ao", "Kyogo", "Ritsu", "Yuya", "Keisuke"], lastEn: ["Minamino", "Mitoma", "Kubo", "Doan", "Ito", "Endo", "Suzuki", "Tanaka"] },
+    TR: { first: ["Арда", "Хакан", "Дженк", "Озан", "Юсуф", "Кенан", "Энес", "Мерих"], last: ["Гюлер", "Йылмаз", "Демир", "Кылыч", "Шахин", "Айдын", "Коч", "Тосун"], firstEn: ["Arda", "Hakan", "Cenk", "Ozan", "Yusuf", "Kenan", "Enes", "Merih"], lastEn: ["Guler", "Yilmaz", "Demir", "Kilic", "Sahin", "Aydin", "Koc", "Tosun"] }
+};
+
+let nameRoll = 0;
+let shownNames = [];
+
+function localNames(id, count) {
+    const bag = GIVEN[id] || GIVEN.KZ;
+    const first = langEn() ? bag.firstEn : bag.first;
+    const last = langEn() ? bag.lastEn : bag.last;
+    const out = [];
+    const start = nameRoll % first.length;
+    for (let i = 0; i < count; i++) {
+        out.push(first[(start + i) % first.length] + " " + last[(start + i) % last.length]);
+    }
+    return out;
+}
+
+function paintNames() {
+    const box = get("namePick");
+    const input = get("playerName");
+    if (!box || !input) return;
+    const on = selectedMode === "player";
+    box.hidden = !on;
+    if (!on) return;
+    const names = localNames(selectedNation, 4);
+    const typed = input.value.trim();
+    const keep = typed && names.indexOf(typed) >= 0;
+    if (!keep && (!typed || shownNames.indexOf(typed) >= 0)) input.value = names[0];
+    shownNames = names;
+    box.innerHTML = "";
+    const label = document.createElement("p");
+    label.className = "pick-label";
+    label.textContent = t("namePick");
+    const row = document.createElement("div");
+    row.className = "name-row";
+    names.forEach(function (full) {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.textContent = full;
+        if (input.value.trim() === full) btn.classList.add("on");
+        btn.addEventListener("click", function () {
+            Sfx.click();
+            input.value = full;
+            paintNames();
+        });
+        row.appendChild(btn);
+    });
+    const more = document.createElement("button");
+    more.type = "button";
+    more.textContent = t("nameMore");
+    more.addEventListener("click", function () {
+        Sfx.click();
+        nameRoll += 4;
+        paintNames();
+    });
+    row.appendChild(more);
+    box.appendChild(label);
+    box.appendChild(row);
+}
+
 const OLD_AVATARS = ["⚽", "😎", "🧔", "🦁", "🐺", "🦅", "🔥", "👑", "🧊", "💫", "🎯", "🧤", "🛡️", "👦", "🥷"];
 const PLAYER_AVATARS = OLD_AVATARS;
 
@@ -6659,6 +6739,7 @@ function renderCreatePicks() {
         });
         nationBox.appendChild(btn);
     });
+    paintNames();
 
     avatarBox.innerHTML = "";
     const label = get("avatarLabel");
