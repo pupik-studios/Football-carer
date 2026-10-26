@@ -11030,17 +11030,12 @@ function auctionRollSlot(idx) {
         Sfx.error();
         return;
     }
-    if (auction.rerolls < 1) {
-        Sfx.error();
-        const meta = get("auctionMeta");
-        if (meta) meta.textContent = t("auctionReroll");
-        return;
-    }
     const pool = starsForSlot(idx, idx);
     if (!pool.length) {
         Sfx.error();
         return;
     }
+    if (!auctionPay()) return;
     auctionReveal(idx, pickArr(pool), true);
 }
 function auctionPay() {
